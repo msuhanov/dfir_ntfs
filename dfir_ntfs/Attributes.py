@@ -249,28 +249,28 @@ class StandardInformationPartial(object):
 	def get_ctime(self):
 		"""Get, decode and return the C (file created) timestamp."""
 
-		if self.offset == 0:
+		if self.offset == 0 and len(self.value) >= 8:
 			timestamp_int = struct.unpack('<Q', self.value[0 : 8])[0]
 			return DecodeFiletime(timestamp_int)
 
 	def get_mtime(self):
 		"""Get, decode and return the M (file modified) timestamp."""
 
-		if self.offset <= 8:
+		if self.offset <= 8 and len(self.value) >= 16:
 			timestamp_int = struct.unpack('<Q', self.value[8 : 16])[0]
 			return DecodeFiletime(timestamp_int)
 
 	def get_etime(self):
 		"""Get, decode and return the E ($MFT entry modified) timestamp."""
 
-		if self.offset <= 16:
+		if self.offset <= 16 and len(self.value) >= 24:
 			timestamp_int = struct.unpack('<Q', self.value[16 : 24])[0]
 			return DecodeFiletime(timestamp_int)
 
 	def get_atime(self):
 		"""Get, decode and return the A (file last accessed) timestamp."""
 
-		if self.offset <= 24:
+		if self.offset <= 24 and len(self.value) >= 32:
 			timestamp_int = struct.unpack('<Q', self.value[24 : 32])[0]
 			return DecodeFiletime(timestamp_int)
 
