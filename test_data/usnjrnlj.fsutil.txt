@@ -1,0 +1,3744 @@
+USN Journal ID    : 0x01d4b29a6f9cc0e9
+First USN         : 0
+Next USN          : 29792
+Start USN         : 0
+Min major version : Supported=2, requested=2
+Max major version : Supported=4, requested=4
+
+Usn               : 0
+File name         : New folder
+File name length  : 20
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:10
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 80
+File name         : New folder
+File name length  : 20
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:36:10
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 160
+File name         : $RECYCLE.BIN
+File name length  : 24
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000029
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 248
+File name         : $RECYCLE.BIN
+File name length  : 24
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000029
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 336
+File name         : $RECYCLE.BIN
+File name length  : 24
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000001000000000029
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 424
+File name         : $RECYCLE.BIN
+File name length  : 24
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000001000000000029
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 512
+File name         : S-1-5-21-2341207468-2645333676-3461800803-1001
+File name length  : 92
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000002a
+Parent file ID    : 00000000000000000001000000000029
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 168
+
+Usn               : 664
+File name         : S-1-5-21-2341207468-2645333676-3461800803-1001
+File name length  : 92
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000002a
+Parent file ID    : 00000000000000000001000000000029
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 168
+
+Usn               : 816
+File name         : S-1-5-21-2341207468-2645333676-3461800803-1001
+File name length  : 92
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 0000000000000000000100000000002a
+Parent file ID    : 00000000000000000001000000000029
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 168
+
+Usn               : 968
+File name         : S-1-5-21-2341207468-2645333676-3461800803-1001
+File name length  : 92
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 0000000000000000000100000000002a
+Parent file ID    : 00000000000000000001000000000029
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 168
+
+Usn               : 1120
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1208
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1296
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x80000102: Data extend | File create | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1384
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000006: Hidden | System
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1472
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000006: Hidden | System
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1560
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x00000002: Data extend
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000006: Hidden | System
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1648
+File name         : desktop.ini
+File name length  : 22
+Reason            : 0x80000002: Data extend | Close
+Time stamp        : 1/22/2019 21:36:11
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000002b
+Parent file ID    : 0000000000000000000100000000002a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 1736
+File name         : New folder
+File name length  : 20
+Reason            : 0x00001000: Rename: old name
+Time stamp        : 1/22/2019 21:36:13
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 1816
+File name         : test_dir
+File name length  : 16
+Reason            : 0x00002000: Rename: new name
+Time stamp        : 1/22/2019 21:36:13
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 1896
+File name         : test_dir
+File name length  : 16
+Reason            : 0x80002000: Rename: new name | Close
+Time stamp        : 1/22/2019 21:36:13
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 1976
+File name         : test_dir
+File name length  : 16
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:36:13
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 2056
+File name         : test_dir
+File name length  : 16
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:36:13
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 2136
+File name         : .
+File name length  : 2
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:36:14
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 2200
+File name         : New Text Document.txt
+File name length  : 42
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:17
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 2304
+File name         : New Text Document.txt
+File name length  : 42
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:36:17
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 2408
+File name         : New Text Document.txt
+File name length  : 42
+Reason            : 0x00001000: Rename: old name
+Time stamp        : 1/22/2019 21:36:22
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 2512
+File name         : test_file_1.txt
+File name length  : 30
+Reason            : 0x00002000: Rename: new name
+Time stamp        : 1/22/2019 21:36:22
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 2608
+File name         : test_file_1.txt
+File name length  : 30
+Reason            : 0x80002000: Rename: new name | Close
+Time stamp        : 1/22/2019 21:36:22
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 2704
+File name         : test_file_1.txt
+File name length  : 30
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:36:22
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 2800
+File name         : test_file_1.txt
+File name length  : 30
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:36:22
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 2896
+File name         : test_file_1.txt
+File name length  : 30
+Reason            : 0x00001000: Rename: old name
+Time stamp        : 1/22/2019 21:36:33
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 2992
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00002000: Rename: new name
+Time stamp        : 1/22/2019 21:36:33
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 3088
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80002000: Rename: new name | Close
+Time stamp        : 1/22/2019 21:36:33
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 3184
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002d
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 3296
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002d
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 3408
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002d
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 3520
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002d
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 3632
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002e
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 3752
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002e
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 3872
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002e
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4096
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002f
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4216
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002f
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4336
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002f
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4456
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000030
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4576
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000030
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4696
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000030
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4816
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000031
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 4936
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000031
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5056
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000031
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5176
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000032
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5296
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000032
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5416
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000032
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5536
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000033
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5656
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000033
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5776
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000033
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 5896
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000034
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6016
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000034
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6136
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000034
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6256
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000035
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6376
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000035
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6496
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:36
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000035
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6616
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000036
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6736
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000036
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6856
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000036
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 6976
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000037
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7096
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000037
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7216
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000037
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7336
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000038
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7456
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000038
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7576
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000038
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7696
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000039
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7816
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000039
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 7936
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:36:37
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000039
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 8056
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000002: Data extend
+Time stamp        : 1/22/2019 21:37:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 8192
+Reason            : 0x80000002: Data extend | Close
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 8272
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80000002: Data extend | Close
+Time stamp        : 1/22/2019 21:37:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 8368
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000001: Data overwrite
+Time stamp        : 1/22/2019 21:37:14
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 8464
+Reason            : 0x80000001: Data overwrite | Close
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 8544
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80000001: Data overwrite | Close
+Time stamp        : 1/22/2019 21:37:14
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 8640
+File name         : .
+File name length  : 2
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:38:09
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 8704
+File name         : $TxfLog.blf
+File name length  : 22
+Reason            : 0x00000001: Data overwrite
+Time stamp        : 1/22/2019 21:38:22
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000021
+Parent file ID    : 0000000000000000000100000000001e
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 8792
+File name         : $TxfLog.blf
+File name length  : 22
+Reason            : 0x80000001: Data overwrite | Close
+Time stamp        : 1/22/2019 21:38:22
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000021
+Parent file ID    : 0000000000000000000100000000001e
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 8880
+File name         : tracking.log.tmp
+File name length  : 32
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 8976
+File name         : tracking.log.tmp
+File name length  : 32
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 9072
+File name         : tracking.log.tmp
+File name length  : 32
+Reason            : 0x00000103: Data overwrite | Data extend | File create
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 9168
+File name         : tracking.log.tmp
+File name length  : 32
+Reason            : 0x80000103: Data overwrite | Data extend | File create | Close
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 9264
+File name         : tracking.log.tmp
+File name length  : 32
+Reason            : 0x00001000: Rename: old name
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 9360
+File name         : tracking.log
+File name length  : 24
+Reason            : 0x00002000: Rename: new name
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 9448
+File name         : tracking.log
+File name length  : 24
+Reason            : 0x80002000: Rename: new name | Close
+Time stamp        : 1/22/2019 21:38:52
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 9536
+File name         : tracking.log
+File name length  : 24
+Reason            : 0x00000001: Data overwrite
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000026: Hidden | System | Archive
+File ID           : 0000000000000000000100000000003a
+Parent file ID    : 00000000000000000001000000000024
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 104
+
+Usn               : 9624
+File name         : test_dir
+File name length  : 16
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 9704
+File name         : test_dir
+File name length  : 16
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000028
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 96
+
+Usn               : 9784
+File name         : .
+File name length  : 2
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 9848
+File name         : .
+File name length  : 2
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 9912
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10008
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:38:54
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000002c
+Parent file ID    : 00000000000000000001000000000028
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10104
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10200
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10296
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10392
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 10488
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003c
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 10608
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003c
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 10728
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003c
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 10848
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003c
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 10968
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003d
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11088
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003d
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11208
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003d
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11328
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003e
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11448
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003e
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11568
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003e
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11688
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003f
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11808
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003f
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 11928
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000003f
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12048
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000040
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12168
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000040
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12288
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000040
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12408
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000041
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12528
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000041
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12648
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000041
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12768
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000042
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 12888
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000042
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13008
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000042
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13128
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000043
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13248
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000043
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13368
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000043
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13488
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000044
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13608
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000044
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13728
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000044
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13848
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000045
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 13968
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000045
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14088
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000045
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14208
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000046
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14328
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000046
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14448
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000046
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14568
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000047
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14688
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000047
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14808
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000047
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 14928
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000048
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 15040
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000048
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 15152
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000048
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 15264
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15360
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15456
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000103: Data overwrite | Data extend | File create
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15552
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00008103: Data overwrite | Data extend | File create | Basic info change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15648
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 15728
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000049
+Parent file ID    : 0000000000000000000100000000003b
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15824
+File name         : .
+File name length  : 2
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 15888
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 15984
+File name         : test_dir - Copy
+File name length  : 30
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:00
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000003b
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 16080
+File name         : .
+File name length  : 2
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000016: Hidden | System | Directory
+File ID           : 00000000000000000005000000000005
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 80
+
+Usn               : 16144
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 16248
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 16384
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 16488
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 16592
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004b
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 16712
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004b
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 16832
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004b
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 16952
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004c
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17072
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004c
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17192
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004c
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17312
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004d
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17432
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004d
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17552
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004d
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17672
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004e
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17792
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004e
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 17912
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004e
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18032
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004f
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18152
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004f
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18272
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000004f
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18392
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000050
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18512
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000050
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18632
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000050
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18752
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000051
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18872
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000051
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 18992
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000051
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19112
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000052
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19232
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000052
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19352
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000052
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19472
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000053
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19592
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000053
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19712
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000053
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19832
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000054
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 19952
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000054
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20072
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000054
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20192
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000055
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20312
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000055
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20480
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000055
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20600
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000056
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20720
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000056
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20840
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000056
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 20960
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000057
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 21072
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000057
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 21184
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000057
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 21296
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 21392
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 21488
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000103: Data overwrite | Data extend | File create
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 21584
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00008103: Data overwrite | Data extend | File create | Basic info change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 21680
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 21760
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000058
+Parent file ID    : 0000000000000000000100000000004a
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 21856
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 21960
+File name         : test_dir - Copy - Copy
+File name length  : 44
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:03
+File attributes   : 0x00000010: Directory
+File ID           : 0000000000000000000100000000004a
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 120
+
+Usn               : 22064
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22184
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x80000100: File create | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22304
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x00008000: Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22424
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x80008000: Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22544
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22664
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22784
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 22904
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005b
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23024
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005b
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23144
+File name         : test_file_111 - Copy (11).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005b
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23264
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005c
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23384
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005c
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23504
+File name         : test_file_111 - Copy (12).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005c
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23624
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005d
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23744
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005d
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23864
+File name         : test_file_111 - Copy (13).txt
+File name length  : 58
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005d
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 23984
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005e
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24104
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005e
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24224
+File name         : test_file_111 - Copy (2).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005e
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24344
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005f
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24576
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005f
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24696
+File name         : test_file_111 - Copy (3).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005f
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24816
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000060
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 24936
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000060
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25056
+File name         : test_file_111 - Copy (4).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000060
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25176
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000061
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25296
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000061
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25416
+File name         : test_file_111 - Copy (5).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000061
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25536
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000062
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25656
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000062
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25776
+File name         : test_file_111 - Copy (6).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000062
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 25896
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000063
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26016
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000063
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26136
+File name         : test_file_111 - Copy (7).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000063
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26256
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000064
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26376
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000064
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26496
+File name         : test_file_111 - Copy (8).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000064
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26616
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000065
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26736
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000065
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26856
+File name         : test_file_111 - Copy (9).txt
+File name length  : 56
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000065
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 26976
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000066
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 27088
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x00008100: File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000066
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 27200
+File name         : test_file_111 - Copy.txt
+File name length  : 48
+Reason            : 0x80008100: File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000066
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 128
+
+Usn               : 27312
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 27408
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 27504
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000103: Data overwrite | Data extend | File create
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 27600
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00008103: Data overwrite | Data extend | File create | Basic info change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 27696
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 27776
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 27872
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 27992
+File name         : test_dir - Copy - Copy - Copy
+File name length  : 58
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:05
+File attributes   : 0x00000010: Directory
+File ID           : 00000000000000000001000000000059
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 28112
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:10
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 28232
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:10
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 28352
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x00000002: Data extend
+Time stamp        : 1/22/2019 21:40:11
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 28472
+File name         : test_file_111 - Copy (10).txt
+File name length  : 58
+Reason            : 0x80000002: Data extend | Close
+Time stamp        : 1/22/2019 21:40:11
+File attributes   : 0x00000020: Archive
+File ID           : 0000000000000000000100000000005a
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 136
+
+Usn               : 28672
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00080000: Object ID change
+Time stamp        : 1/22/2019 21:40:14
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 28768
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80080000: Object ID change | Close
+Time stamp        : 1/22/2019 21:40:14
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 28864
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000001: Data overwrite
+Time stamp        : 1/22/2019 21:40:23
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 28960
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000005: Data overwrite | Data truncation
+Time stamp        : 1/22/2019 21:40:23
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29056
+Reason            : 0x80000005: Data overwrite | Data truncation | Close
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 29136
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80000005: Data overwrite | Data truncation | Close
+Time stamp        : 1/22/2019 21:40:23
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000067
+Parent file ID    : 00000000000000000001000000000059
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29232
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000100: File create
+Time stamp        : 1/22/2019 21:40:28
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29328
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000102: Data extend | File create
+Time stamp        : 1/22/2019 21:40:28
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29424
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00000103: Data overwrite | Data extend | File create
+Time stamp        : 1/22/2019 21:40:28
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29520
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x00008103: Data overwrite | Data extend | File create | Basic info change
+Time stamp        : 1/22/2019 21:40:28
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112
+
+Usn               : 29616
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Major version     : 4
+Minor version     : 0
+Record length     : 80
+Number of extents : 1
+Remaining extents : 0
+Extents           :
+    [1: 0, 2228224] 
+Usn               : 29696
+File name         : test_file_111.txt
+File name length  : 34
+Reason            : 0x80008103: Data overwrite | Data extend | File create | Basic info change | Close
+Time stamp        : 1/22/2019 21:40:28
+File attributes   : 0x00000020: Archive
+File ID           : 00000000000000000001000000000068
+Parent file ID    : 00000000000000000005000000000005
+Source info       : 0x00000000: *NONE*
+Security ID       : 0
+Major version     : 3
+Minor version     : 0
+Record length     : 112

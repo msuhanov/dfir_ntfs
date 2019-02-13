@@ -1,0 +1,644 @@
+#!/usr/bin/env python3
+
+# dfir_ntfs: an NTFS parser for digital forensics & incident response
+# (c) Maxim Suhanov
+
+import sys
+import csv
+from dfir_ntfs import *
+
+def format_timestamp(timestamp):
+	if timestamp is None:
+		return 'N/A'
+
+	return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+def hexdump(buf):
+	def int2hex(i):
+		return '{:02X}'.format(i)
+
+	if type(buf) is not bytearray:
+		buf = bytearray(buf)
+
+	if len(buf) == 0:
+		return '-'
+
+	output_lines = ''
+
+	i = 0
+	while i < len(buf):
+		bytes_line = buf[i : i + 16]
+
+		address = int2hex(i)
+		address = str(address).zfill(8)
+		hex_line = ''
+		ascii_line = ''
+
+		k = 0
+		while k < len(bytes_line):
+			single_byte = bytes_line[k]
+
+			hex_line += int2hex(single_byte)
+			if k == 7 and k != len(bytes_line) - 1:
+				hex_line += '-'
+			elif k != len(bytes_line) - 1:
+				hex_line += ' '
+
+			if single_byte >= 32 and single_byte <= 126:
+				ascii_line += chr(single_byte)
+			else:
+				ascii_line += '.'
+
+			k += 1
+
+		padding_count = 16 - k
+		if padding_count > 0:
+			hex_line += ' ' * 3 * padding_count
+
+		output_lines += address + ' ' * 2 + hex_line + ' ' * 2 + ascii_line
+
+		i += 16
+
+		if i < len(buf):
+			output_lines += '\n'
+
+	return output_lines
+
+def process_mft():
+	global input_file, csv_writer
+
+	mft = MFT.MasterFileTableParser(input_file)
+
+	csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
+
+	for file_record in mft.file_records():
+		try:
+			file_paths = mft.build_full_paths(file_record, True)
+		except MFT.MasterFileTableException:
+			continue
+
+		attr_standard_information = None
+		file_size = None
+		ads_set = set()
+		objid_time = None
+
+		wsl_found = False
+		wsl_mtime = ''
+		wsl_atime = ''
+		wsl_chtime = ''
+
+		for attribute in file_record.attributes():
+			if type(attribute) is MFT.AttributeRecordResident:
+				attribute_value = attribute.value_decoded()
+
+				if type(attribute_value) is Attributes.StandardInformation:
+					if attr_standard_information is None:
+						attr_standard_information = attribute_value
+
+				if type(attribute_value) is Attributes.ObjectID:
+					if objid_time is None:
+						objid_time = attribute_value.get_timestamp()
+
+				if type(attribute_value) is Attributes.EA:
+					if not wsl_found:
+						for ea_name, ea_flags, ea_value in attribute_value.data_parsed():
+							if ea_name == b'LXATTRB\x00':
+								try:
+									lxattrb = WSL.LXATTRB(ea_value)
+								except ValueError:
+									pass
+								else:
+									wsl_found = True
+
+									wsl_atime = format_timestamp(lxattrb.get_atime())
+									wsl_mtime = format_timestamp(lxattrb.get_mtime())
+									wsl_chtime = format_timestamp(lxattrb.get_chtime())
+
+				if attribute.type_code == Attributes.ATTR_TYPE_DATA and attribute.name is None:
+					if file_size is None:
+						file_size = str(len(attribute.value))
+
+				if attribute.type_code == Attributes.ATTR_TYPE_DATA and attribute.name is not None:
+					ads_set.add(attribute.name)
+			else:
+				if attribute.type_code == Attributes.ATTR_TYPE_DATA and attribute.name is None and attribute.lowest_vcn == 0:
+					if file_size is None:
+						file_size = str(attribute.file_size)
+
+				if attribute.type_code == Attributes.ATTR_TYPE_DATA and attribute.name is not None:
+					ads_set.add(attribute.name)
+
+		if file_size is None:
+			file_size = '?'
+
+		if len(ads_set) > 0:
+			ads_list = ' '.join(sorted(ads_set))
+		else:
+			ads_list = ''
+
+		if objid_time is None:
+			objid_time = ''
+		else:
+			objid_time = format_timestamp(objid_time)
+
+		if attr_standard_information is not None:
+			si_mtime = format_timestamp(attr_standard_information.get_mtime())
+			si_atime = format_timestamp(attr_standard_information.get_atime())
+			si_ctime = format_timestamp(attr_standard_information.get_ctime())
+			si_etime = format_timestamp(attr_standard_information.get_etime())
+			si_usn = attr_standard_information.get_usn()
+		else:
+			si_mtime = ''
+			si_atime = ''
+			si_ctime = ''
+			si_etime = ''
+			si_usn = ''
+
+		fr_lsn = file_record.get_logfile_sequence_number()
+
+		if file_record.is_in_use():
+			fr_in_use = 'Y'
+		else:
+			fr_in_use = 'N'
+
+		if file_record.get_flags() & MFT.FILE_FILE_NAME_INDEX_PRESENT > 0:
+			fr_directory = 'Y'
+		else:
+			fr_directory = 'N'
+
+		fr_number = MFT.EncodeFileRecordSegmentReference(file_record.get_master_file_table_number(), file_record.get_sequence_number())
+
+		if len(file_paths) > 0:
+			for file_path, attr_file_name in file_paths:
+				fn_mtime = format_timestamp(attr_file_name.get_mtime())
+				fn_atime = format_timestamp(attr_file_name.get_atime())
+				fn_ctime = format_timestamp(attr_file_name.get_ctime())
+				fn_etime = format_timestamp(attr_file_name.get_etime())
+
+				csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+		else:
+			file_path = ''
+			fn_mtime = ''
+			fn_atime = ''
+			fn_ctime = ''
+			fn_etime = ''
+
+			csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+
+		if file_record.get_flags() & MFT.FILE_FILE_NAME_INDEX_PRESENT > 0:
+			for attribute in file_record.attributes():
+				if type(attribute) is MFT.AttributeRecordResident:
+					attribute_value = attribute.value_decoded()
+
+					if type(attribute_value) is Attributes.IndexRoot:
+						if attribute_value.get_indexed_attribute_type_code() != Attributes.ATTR_TYPE_FILE_NAME:
+							continue
+
+						for index_entry in attribute_value.index_entries():
+							attr_file_name = Attributes.FileName(index_entry.get_attribute())
+
+							if len(file_paths) > 0:
+								dir_path = file_paths[0][0]
+								if dir_path == '/.':
+									dir_path = ''
+
+								file_path = MFT.PATH_SEPARATOR.join([dir_path, attr_file_name.get_file_name()])
+							else:
+								file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+
+							fr_number = index_entry.get_file_reference()
+							fr_in_use = '?'
+
+							if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
+								fr_directory = 'Y'
+							else:
+								fr_directory = 'N'
+
+							fr_lsn = '?'
+
+							si_mtime = ''
+							si_atime = ''
+							si_ctime = ''
+							si_etime = ''
+							si_usn = ''
+
+							ads_list = ''
+
+							fn_mtime = format_timestamp(attr_file_name.get_mtime())
+							fn_atime = format_timestamp(attr_file_name.get_atime())
+							fn_ctime = format_timestamp(attr_file_name.get_ctime())
+							fn_etime = format_timestamp(attr_file_name.get_etime())
+
+							objid_time = ''
+
+							file_size = attr_file_name.get_file_size()
+
+							csv_writer.writerow(['Index record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+
+def process_usn():
+	global input_file, input_mft, csv_writer
+
+	usn_journal = USN.ChangeJournalParser(input_file)
+	mft_file = MFT.MasterFileTableParser(input_mft)
+
+	csv_writer.writerow(['USN value', 'Source', 'Reason', 'MFT reference number', 'Parent MFT reference number', 'Timestamp', 'File name', 'File path (from $MFT)'])
+
+	for usn_record in usn_journal.usn_records():
+		r_usn = usn_record.get_usn()
+		r_source = USN.ResolveSourceCodes(usn_record.get_source_info())
+		r_reason = USN.ResolveReasonCodes(usn_record.get_reason())
+		fr_reference_number = usn_record.get_file_reference_number()
+		parent_fr_reference_number = usn_record.get_parent_file_reference_number()
+
+		if type(usn_record) is USN.USN_RECORD_V2_OR_V3:
+			r_timestamp = format_timestamp(usn_record.get_timestamp())
+			fr_file_name = usn_record.get_file_name()
+		else:
+			r_timestamp = ''
+			fr_file_name = ''
+
+		fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(fr_reference_number)
+
+		try:
+			file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
+			file_paths = mft_file.build_full_paths(file_record)
+		except MFT.MasterFileTableException:
+			fr_file_path = None
+		else:
+			if len(file_paths) > 0:
+				fr_file_path = file_paths[0]
+			else:
+				fr_file_path = None
+
+		csv_writer.writerow([r_usn, r_source, r_reason, fr_reference_number, parent_fr_reference_number, r_timestamp, fr_file_name, fr_file_path])
+
+def process_log():
+	global input_file, input_mft, output_file
+	global deleted_files
+
+	def process_restart_area(restart_area):
+		output_lines = []
+
+		output_lines.append('LSN: {}'.format(restart_area.lsn))
+		output_lines.append('Restart area, version: {}.{}'.format(restart_area.get_major_version(), restart_area.get_minor_version()))
+		output_lines.append(' Start of checkpoint LSN: {}'.format(restart_area.get_start_of_checkpoint_lsn()))
+		output_lines.append(' Tables (LSN and length):')
+		output_lines.append(' * Open attribute table: {} {}'.format(restart_area.get_open_attribute_table_lsn(), restart_area.get_open_attribute_table_length()))
+		output_lines.append(' * Attribute names: {} {}'.format(restart_area.get_attribute_names_lsn(), restart_area.get_attribute_names_length()))
+		output_lines.append(' * Dirty page table: {} {}'.format(restart_area.get_dirty_page_table_lsn(), restart_area.get_dirty_page_table_length()))
+		output_lines.append(' * Transaction table: {} {}'.format(restart_area.get_transaction_table_lsn(), restart_area.get_transaction_table_length()))
+
+		return '\n'.join(output_lines)
+
+	def process_log_record(log_record):
+		global deleted_files
+
+		target_attribute_name = None
+		redo_op = log_record.get_redo_operation()
+		undo_op = log_record.get_undo_operation()
+		redo_data = log_record.get_redo_data()
+		undo_data = log_record.get_undo_data()
+
+		output_lines = []
+
+		output_lines.append('LSN: {}'.format(log_record.lsn))
+		output_lines.append('Log record, redo operation: {}, undo operation: {}'.format(LogFile.ResolveNTFSOperation(redo_op), LogFile.ResolveNTFSOperation(undo_op)))
+
+		target = log_record.calculate_mft_target_number()
+		if target is not None:
+			output_lines.append('Target (file number): {}'.format(target))
+
+			try:
+				file_record = mft_file.get_file_record_by_number(target)
+				file_paths = mft_file.build_full_paths(file_record)
+			except MFT.MasterFileTableException:
+				fr_file_path = None
+			else:
+				if len(file_paths) > 0:
+					fr_file_path = file_paths[0]
+				else:
+					fr_file_path = None
+
+			if fr_file_path is not None:
+				output_lines.append('Target path (from $MFT, likely wrong if the file was deleted later): {}'.format(fr_file_path))
+		else:
+			target = log_record.calculate_mft_target_reference_and_name()
+			if target is not None:
+				target_reference, target_attribute_name = target
+
+				output_lines.append('Target (file reference number): {}'.format(target_reference))
+				output_lines.append('Target (attribute name): {}'.format(target_attribute_name))
+
+				fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(target_reference)
+
+				try:
+					file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
+					file_paths = mft_file.build_full_paths(file_record)
+				except MFT.MasterFileTableException:
+					fr_file_path = None
+				else:
+					if len(file_paths) > 0:
+						fr_file_path = file_paths[0]
+					else:
+						fr_file_path = None
+
+				if fr_file_path is not None:
+					output_lines.append('Target path (from $MFT): {}'.format(fr_file_path))
+			else:
+				output_lines.append('Unknown target')
+
+		offset_in_target = log_record.calculate_offset_in_target()
+		if offset_in_target is not None:
+			output_lines.append('Offset in tagret: {}'.format(offset_in_target))
+		else:
+			output_lines.append('Unknown offset in target')
+
+		lcns = []
+		for lcn in log_record.get_lcns_for_page():
+			lcns.append(str(lcn))
+
+		if len(lcns) > 0:
+			output_lines.append('LCN(s): {}'.format(' '.join(lcns)))
+
+		output_lines.append('Redo data:')
+		output_lines.append(hexdump(redo_data))
+		output_lines.append('')
+		output_lines.append('Undo data:')
+		output_lines.append(hexdump(undo_data))
+
+		output_lines.append('')
+
+		if redo_op == LogFile.DeallocateFileRecordSegment:
+			target_number = log_record.calculate_mft_target_number()
+			if target_number is None:
+				target_number = 'unknown'
+
+			deleted_files.append(str(target_number))
+
+		if redo_op == LogFile.InitializeFileRecordSegment:
+			frs_size = log_record.get_target_block_size() * 512
+			if frs_size == 0:
+				frs_size = 1024
+
+			frs_buf = redo_data + (b'\x00' * (frs_size - len(redo_data)))
+
+			try:
+				frs = MFT.FileRecordSegment(frs_buf, False)
+			except MFT.MasterFileTableException:
+				pass
+			else:
+				try:
+					for frs_attr in frs.attributes():
+						if type(frs_attr) is MFT.AttributeRecordNonresident:
+							continue
+
+						frs_attr_val = frs_attr.value_decoded()
+						if type(frs_attr_val) is Attributes.StandardInformation:
+							output_lines.append('$STANDARD_INFORMATION:')
+							output_lines.append(' * M timestamp: {}'.format(format_timestamp(frs_attr_val.get_mtime())))
+							output_lines.append(' * A timestamp: {}'.format(format_timestamp(frs_attr_val.get_atime())))
+							output_lines.append(' * C timestamp: {}'.format(format_timestamp(frs_attr_val.get_ctime())))
+							output_lines.append(' * E timestamp: {}'.format(format_timestamp(frs_attr_val.get_etime())))
+							output_lines.append(' * File attributes: {}'.format(Attributes.ResolveFileAttributes(frs_attr_val.get_file_attributes())))
+							output_lines.append('')
+
+						elif type(frs_attr_val) is Attributes.FileName:
+							output_lines.append('$FILE_NAME:')
+							output_lines.append(' * M timestamp: {}'.format(format_timestamp(frs_attr_val.get_mtime())))
+							output_lines.append(' * A timestamp: {}'.format(format_timestamp(frs_attr_val.get_atime())))
+							output_lines.append(' * C timestamp: {}'.format(format_timestamp(frs_attr_val.get_ctime())))
+							output_lines.append(' * E timestamp: {}'.format(format_timestamp(frs_attr_val.get_etime())))
+							output_lines.append(' * File name: {}'.format(frs_attr_val.get_file_name()))
+
+							parent_reference = frs_attr_val.get_parent_directory()
+							output_lines.append(' * Parent (file reference number): {}'.format(parent_reference))
+
+							fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(parent_reference)
+
+							try:
+								file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
+								file_paths = mft_file.build_full_paths(file_record)
+							except MFT.MasterFileTableException:
+								fr_file_path = None
+							else:
+								if len(file_paths) > 0:
+									fr_file_path = file_paths[0]
+								else:
+									fr_file_path = None
+
+							if fr_file_path is not None:
+								output_lines.append(' * Parent path (from $MFT): {}'.format(fr_file_path))
+
+							output_lines.append('')
+
+						elif type(frs_attr_val) is Attributes.ObjectID:
+							output_lines.append('$OBJECT_ID:')
+							output_lines.append(' * GUID: {}'.format(frs_attr_val.get_object_id()))
+							output_lines.append(' * Timestamp: {}'.format(format_timestamp(frs_attr_val.get_timestamp())))
+							output_lines.append('')
+
+				except MFT.MasterFileTableException:
+					pass
+
+		if redo_op == LogFile.CreateAttribute or undo_op == LogFile.CreateAttribute or redo_op == LogFile.WriteEndOfFileRecordSegment or undo_op == LogFile.WriteEndOfFileRecordSegment:
+			if redo_op == LogFile.CreateAttribute:
+				attr_buf = redo_data
+			elif undo_op == LogFile.CreateAttribute:
+				attr_buf = undo_data
+			else:
+				if len(redo_data) > len(undo_data):
+					attr_buf = redo_data
+				else:
+					attr_buf = undo_data
+
+			if len(attr_buf) >= 24:
+				type_code, record_length, form_code, name_length, name_offset, flags, instance = MFT.UnpackAttributeRecordPartialHeader(attr_buf[0 : 16])
+				value_length, value_offset, resident_flags, reserved = MFT.UnpackAttributeRecordRemainingHeaderResident(attr_buf[16 : 24])
+
+				if value_offset > 0 and value_offset % 8 == 0 and value_length > 0:
+					attr_value_buf = attr_buf[value_offset : value_offset + value_length]
+					if len(attr_value_buf) == value_length:
+						if type_code == Attributes.ATTR_TYPE_STANDARD_INFORMATION:
+							attr_si = Attributes.StandardInformation(attr_value_buf)
+
+							output_lines.append('$STANDARD_INFORMATION:')
+							output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_si.get_mtime())))
+							output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_si.get_atime())))
+							output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_si.get_ctime())))
+							output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_si.get_etime())))
+							output_lines.append(' * File attributes: {}'.format(Attributes.ResolveFileAttributes(attr_si.get_file_attributes())))
+							output_lines.append('')
+
+						elif type_code == Attributes.ATTR_TYPE_FILE_NAME:
+							attr_fn = Attributes.FileName(attr_value_buf)
+
+							output_lines.append('$FILE_NAME:')
+							output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_fn.get_mtime())))
+							output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_fn.get_atime())))
+							output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_fn.get_ctime())))
+							output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_fn.get_etime())))
+							output_lines.append(' * File name: {}'.format(attr_fn.get_file_name()))
+
+							parent_reference = attr_fn.get_parent_directory()
+							output_lines.append(' * Parent (file reference number): {}'.format(parent_reference))
+
+							fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(parent_reference)
+
+							try:
+								file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
+								file_paths = mft_file.build_full_paths(file_record)
+							except MFT.MasterFileTableException:
+								fr_file_path = None
+							else:
+								if len(file_paths) > 0:
+									fr_file_path = file_paths[0]
+								else:
+									fr_file_path = None
+
+							if fr_file_path is not None:
+								output_lines.append(' * Parent path (from $MFT): {}'.format(fr_file_path))
+
+							output_lines.append('')
+
+						elif type_code == Attributes.ATTR_TYPE_OBJECT_ID:
+							attr_objid = Attributes.ObjectID(attr_value_buf)
+
+							output_lines.append('$OBJECT_ID:')
+							output_lines.append(' * GUID: {}'.format(attr_objid.get_object_id()))
+							output_lines.append(' * Timestamp: {}'.format(format_timestamp(attr_objid.get_timestamp())))
+							output_lines.append('')
+
+		if offset_in_target is not None and (redo_op == LogFile.UpdateResidentValue or undo_op == LogFile.UpdateResidentValue):
+			frs_size = log_record.get_target_block_size() * 512
+			if frs_size == 0:
+				frs_size = 1024
+
+			if frs_size == 1024 or frs_size == 4096:
+				si_attr_offset = 56 + 24
+				if frs_size == 4096:
+					si_attr_offset = 72 + 24
+
+				if offset_in_target >= si_attr_offset and offset_in_target <= si_attr_offset + 32:
+					buf = redo_data
+					if len(buf) >= 8:
+						attr_si = Attributes.StandardInformationPartial(buf, offset_in_target - si_attr_offset)
+
+						output_lines.append('Possible update to $STANDARD_INFORMATION (redo data):')
+						output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_si.get_mtime())))
+						output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_si.get_atime())))
+						output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_si.get_ctime())))
+						output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_si.get_etime())))
+						output_lines.append('')
+
+					buf = undo_data
+					if len(buf) >= 8:
+						attr_si = Attributes.StandardInformationPartial(buf, offset_in_target - si_attr_offset)
+
+						output_lines.append('Possible update to $STANDARD_INFORMATION (undo data):')
+						output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_si.get_mtime())))
+						output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_si.get_atime())))
+						output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_si.get_ctime())))
+						output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_si.get_etime())))
+						output_lines.append('')
+
+		if target_attribute_name == '$J':
+			usn_data_1 = None
+			usn_data_2 = None
+
+			if redo_op == LogFile.UpdateNonresidentValue:
+				usn_data_1 = redo_data
+			if undo_op == LogFile.UpdateNonresidentValue:
+				usn_data_2 = undo_data
+
+			for usn_data in [ usn_data_1, usn_data_2 ]:
+				if usn_data is not None:
+					try:
+						usn_record = USN.GetUsnRecord(usn_data)
+					except (NotImplementedError, ValueError):
+						pass
+					else:
+						if type(usn_record) is USN.USN_RECORD_V4:
+							output_lines.append('USN record (version 4):')
+						else:
+							output_lines.append('USN record:')
+
+						output_lines.append(' Number: {}'.format(usn_record.get_usn()))
+						output_lines.append(' Source: {}'.format(USN.ResolveSourceCodes(usn_record.get_source_info())))
+						output_lines.append(' Reason: {}'.format(USN.ResolveReasonCodes(usn_record.get_reason())))
+						output_lines.append(' File reference number: {}'.format(usn_record.get_file_reference_number()))
+						output_lines.append(' Parent file reference number: {}'.format(usn_record.get_parent_file_reference_number()))
+
+						if type(usn_record) is USN.USN_RECORD_V2_OR_V3:
+							output_lines.append(' Timestamp: {}'.format(format_timestamp(usn_record.get_timestamp())))
+							output_lines.append(' File name: {}'.format(usn_record.get_file_name()))
+
+						output_lines.append('')
+
+		return '\n'.join(output_lines)
+
+
+	log_file = LogFile.LogFileParser(input_file)
+	mft_file = MFT.MasterFileTableParser(input_mft)
+
+	deleted_files = []
+
+	for log_item in log_file.parse_ntfs_records():
+		if type(log_item) is LogFile.NTFSRestartArea:
+			output_data = process_restart_area(log_item)
+		elif type(log_item) is LogFile.NTFSLogRecord:
+			output_data = process_log_record(log_item)
+
+		output_file.write(output_data)
+		output_file.write('\n\n---\n\n')
+
+	if len(deleted_files) > 0:
+		output_file.write('Files and directories with these MFT numbers were deleted (in this order):\n')
+		deleted_files = ' '.join(deleted_files)
+		output_file.write(deleted_files)
+		output_file.write('\n\n---\n\n')
+
+def print_usage():
+	print('Usage:')
+	print(' ntfs_parser --mft <input file ($MFT)> <output file (CSV)>')
+	print(' ntfs_parser --usn <input file ($MFT)> <input file ($UsnJrnl:$J)> <output file (CSV)>')
+	print(' ntfs_parser --log <input file ($MFT)> <input file ($LogFile)> <output file (TXT)>')
+
+if len(sys.argv) != 4 and len(sys.argv) != 5:
+	print_usage()
+	sys.exit(0)
+
+mode = sys.argv[1]
+if mode not in [ '--mft', '--usn', '--log' ]:
+	print_usage()
+	sys.exit(0)
+
+if mode in [ '--mft' ] and len(sys.argv) != 4:
+	print_usage()
+	sys.exit(0)
+
+if mode in [ '--usn', '--log' ] and len(sys.argv) != 5:
+	print_usage()
+	sys.exit(0)
+
+if mode == '--mft':
+	input_file = open(sys.argv[2], 'rb')
+	output_file = open(sys.argv[3], 'w', newline = '', encoding = 'utf-8')
+	csv_writer = csv.writer(output_file, dialect = 'excel')
+
+	process_mft()
+elif mode == '--usn':
+	input_mft = open(sys.argv[2], 'rb')
+	input_file = open(sys.argv[3], 'rb')
+	output_file = open(sys.argv[4], 'w', newline = '', encoding = 'utf-8')
+	csv_writer = csv.writer(output_file, dialect = 'excel')
+
+	process_usn()
+elif mode == '--log':
+	input_mft = open(sys.argv[2], 'rb')
+	input_file = open(sys.argv[3], 'rb')
+	output_file = open(sys.argv[4], 'w', encoding = 'utf-8')
+
+	process_log()
+
+input_file.close()
+output_file.close()
