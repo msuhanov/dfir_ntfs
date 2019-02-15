@@ -1297,7 +1297,7 @@ class LogFileParser(object):
 
 		if client_data_length <= self.log_page_size - offset_in_page - self.record_header_length: # Client data is in the current log record page only.
 			client_buf = log_record_header.buf[self.record_header_length : self.record_header_length + client_data_length]
-			client_data = ClientData(client_buf, log_record_header.get_record_type(), lsn, self.cluster_size)
+			client_data = ClientData(client_buf, log_record_header.get_record_type(), lsn, log_record_header.get_transaction_id(), self.cluster_size)
 
 			return client_data
 
@@ -1325,7 +1325,7 @@ class LogFileParser(object):
 
 				client_data_length_left -= len(client_buf_more_data)
 
-			client_data = ClientData(client_buf, log_record_header.get_record_type(), lsn, self.cluster_size)
+			client_data = ClientData(client_buf, log_record_header.get_record_type(), lsn, log_record_header.get_transaction_id(), self.cluster_size)
 
 			return client_data
 
@@ -1398,10 +1398,14 @@ class ClientData(object):
 	cluster_size = None
 	"""A number of bytes per cluster."""
 
-	def __init__(self, client_data_raw, record_type, log_sequence_number, cluster_size):
+	transaction_id = None
+	"""A transaction ID."""
+
+	def __init__(self, client_data_raw, record_type, log_sequence_number, transaction_id, cluster_size):
 		self.buf = client_data_raw
 		self.record_type = record_type
 		self.lsn = log_sequence_number
+		self.transaction_id = transaction_id
 
 		self.cluster_size = cluster_size
 
@@ -1411,7 +1415,7 @@ class ClientData(object):
 		if self.record_type == LfsClientRestart:
 			return NTFSRestartArea(self.buf, self.lsn)
 		elif self.record_type == LfsClientRecord:
-			return NTFSLogRecord(self.buf, self.lsn, self.cluster_size)
+			return NTFSLogRecord(self.buf, self.lsn, self.transaction_id, self.cluster_size)
 		else:
 			raise NotImplementedError('The following record type is not supported: {}'.format(self.record_type))
 
@@ -1542,9 +1546,13 @@ class NTFSLogRecord(object):
 	oat = None
 	"""An open attribute table (it is set externally in the 'parse_ntfs_records' method of the LogFileParser class)."""
 
-	def __init__(self, log_record_raw, lsn, cluster_size):
+	transaction_id = None
+	"""A transaction ID."""
+
+	def __init__(self, log_record_raw, lsn, transaction_id, cluster_size):
 		self.buf = log_record_raw
 		self.lsn = lsn
+		self.transaction_id = transaction_id
 
 		self.cluster_size = cluster_size
 

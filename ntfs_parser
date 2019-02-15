@@ -302,6 +302,7 @@ def process_log():
 		output_lines = []
 
 		output_lines.append('LSN: {}'.format(log_record.lsn))
+		output_lines.append('Transaction ID: {}'.format(log_record.transaction_id))
 		output_lines.append('Log record, redo operation: {}, undo operation: {}'.format(LogFile.ResolveNTFSOperation(redo_op), LogFile.ResolveNTFSOperation(undo_op)))
 
 		target = log_record.calculate_mft_target_number()
