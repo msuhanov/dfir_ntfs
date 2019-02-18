@@ -660,7 +660,7 @@ class IndexRoot(GenericAttribute):
 			print_header = True
 			vcn_list = []
 
-			for index_entry in self.get_index_entries():
+			for index_entry in self.index_entries():
 				vcn = index_entry.get_vcn()
 				if vcn is not None:
 					vcn = str(vcn)
