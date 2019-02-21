@@ -1,3 +1,11 @@
+Version: 1.0.0-beta5
+
+Resolve a possible bug with the WSL metadata assigned to an index record in the CSV output.
+Extract and parse slack space from file records.
+Minor changes.
+
+---
+
 Version: 1.0.0-beta4
 
 Minor update.

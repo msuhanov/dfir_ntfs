@@ -107,6 +107,9 @@ class FileRecordSegment(object):
 	usa_size = None
 	"""A size of an update sequence array (USA)."""
 
+	frs_real_size = None
+	"""A real size of this file record segment (FRS)."""
+
 	def __init__(self, file_record_segment_buf, apply_update_sequence_array = True):
 		"""Create a FileRecordSegment object from bytes (the 'file_record_segment_buf' argument). Apply an update sequence array, if requested (the 'apply_update_sequence_array' argument)."""
 
@@ -263,6 +266,18 @@ class FileRecordSegment(object):
 		mft_number_hi, mft_number_lo = struct.unpack('<HL', self.frs_data[42 : 48])
 		return (mft_number_hi << 32) | mft_number_lo
 
+	def get_slack(self):
+		"""Get and return the slack space (as a SlackSpace object or None, if not available) from this file record segment (FRS)."""
+
+		if self.frs_real_size is None:
+			for __ in self.attributes():
+				pass
+
+		if self.frs_real_size is None: # This file record segment (FRS) is invalid.
+			return
+
+		return SlackSpace(self.frs_data[self.frs_real_size : ])
+
 	def attributes(self):
 		"""This method yields each attribute (AttributeRecordResident or AttributeRecordNonresident) of this file record segment (FRS)."""
 
@@ -275,6 +290,7 @@ class FileRecordSegment(object):
 				type_code, = struct.unpack('<L', attribute_record_partial_header[: 4])
 
 				if type_code == Attributes.ATTR_TYPE_END: # Stop here.
+					self.frs_real_size = pos + 4
 					break
 				else:
 					raise AttributeException('Unexpected end of the file record segment')
@@ -282,6 +298,7 @@ class FileRecordSegment(object):
 				raise AttributeException('Unexpected end of the file record segment')
 
 			if type_code == Attributes.ATTR_TYPE_END: # Stop here.
+				self.frs_real_size = pos + 4
 				break
 
 			if record_length < 8 or record_length % 8 != 0 or pos + record_length > self.get_first_free_byte_offset():
@@ -452,12 +469,98 @@ class AttributeRecordNonresident(object):
 
 		return 'AttributeRecordNonresident, type: {}, {}, VCN range: {}-{}'.format(self.type_str(), name_str, self.lowest_vcn, self.highest_vcn)
 
+class SlackSpace(object):
+	"""This class is used to work with slack space."""
+
+	value = None
+	"""A value (raw data) for this slack space."""
+
+	def __init__(self, value):
+		self.value = value
+
+		self.timestamp_not_before = 125000000000000000 # Year: 1997.
+		self.timestamp_not_after = 145000000000000000 # Year: 2060.
+
+	def carve(self):
+		"""This method yields possible attributes (as objects from the Attributes module) extracted from this slack space.
+		Only the $FILE_NAME attributes are supported.
+		"""
+
+		def validate_timestamp(timestamp):
+			return timestamp >= self.timestamp_not_before and timestamp <= self.timestamp_not_after
+
+		def validate_file_name(file_name):
+			if len(file_name) == 0 or len(file_name) > 255:
+				return False
+
+			if '/' in file_name or '\x00' in file_name:
+				return False
+
+			return True
+
+
+		if len(self.value) >= 8:
+			pos = 0
+			if len(self.value) % 2 != 0:
+				pos = 1
+
+			while pos < len(self.value):
+				buf = self.value[pos : pos + 32]
+				if len(buf) != 32:
+					break
+
+				ts_tuple = struct.unpack('<QQQQ', buf)
+
+				ts_valid = True
+				for ts in ts_tuple:
+					if not validate_timestamp(ts):
+						ts_valid = False
+						break
+
+				if ts_valid and pos >= 8:
+					attr_pos = pos - 8
+					attr_buf = self.value[attr_pos : ]
+
+					try:
+						file_name = Attributes.FileName(attr_buf)
+						ts_m = file_name.get_mtime()
+						ts_a = file_name.get_atime()
+						ts_c = file_name.get_ctime()
+						ts_e = file_name.get_etime()
+						file_name_str = file_name.get_file_name()
+					except Exception:
+						pass
+					else:
+						if validate_file_name(file_name_str):
+							yield file_name
+
+							# Jump to the file name part and continue.
+							pos += 68
+							continue
+
+				pos += 2
+
+	def __str__(self):
+		return 'SlackSpace, size: {}'.format(len(self.value))
+
 class FileRecord(object):
 	"""This class is used to represent a file record (one or more file record segments)."""
 
 	def __init__(self, base_file_record_segment, child_file_record_segments_list):
 		self.base_frs = base_file_record_segment
 		self.child_frs_list = child_file_record_segments_list
+
+	def slack(self):
+		"""This method yields slack space objects (SlackSpace) for this file record."""
+
+		slack = self.base_frs.get_slack()
+		if slack is not None:
+			yield slack
+
+		for child_frs in self.child_frs_list:
+			slack = child_frs.get_slack()
+			if slack is not None:
+				yield slack
 
 	def attributes(self):
 		"""This method yields each attribute (AttributeRecordResident or AttributeRecordNonresident) of this file record."""
@@ -529,6 +632,9 @@ class MasterFileTableParser(object):
 
 		self.file_object.seek(28)
 		file_record_segment_size_bytes = self.file_object.read(4)
+		if len(file_record_segment_size_bytes) != 4:
+			raise FileRecordSegmentException('Read error within the first file record segment')
+
 		self.file_record_segment_size = struct.unpack('<L', file_record_segment_size_bytes)[0]
 		if self.file_record_segment_size not in FILE_RECORD_SEGMENT_SIZES_SUPPORTED:
 			raise FileRecordSegmentException('Invalid (unsupported) declared size of the file record segment: {}'.format(self.file_record_segment_size))
@@ -563,7 +669,11 @@ class MasterFileTableParser(object):
 	def get_file_record_segment_by_number(self, file_record_segment_number):
 		"""Get and return a file record segment (FileRecordSegment) by its number."""
 
-		self.file_object.seek(file_record_segment_number * self.file_record_segment_size)
+		file_record_segment_offset = file_record_segment_number * self.file_record_segment_size
+		if file_record_segment_offset > self.file_size:
+			raise MasterFileTableException('Invalid offset (too large): {}'.format(file_record_segment_offset))
+
+		self.file_object.seek(file_record_segment_offset)
 		buf = self.file_object.read(self.file_record_segment_size)
 
 		return FileRecordSegment(buf)
@@ -574,7 +684,11 @@ class MasterFileTableParser(object):
 		then a base file record segment (FRS) will be located (in the cache) and used instead.
 		"""
 
-		self.file_object.seek(base_file_record_segment_number * self.file_record_segment_size)
+		base_file_record_segment_offset = base_file_record_segment_number * self.file_record_segment_size
+		if base_file_record_segment_offset > self.file_size:
+			raise MasterFileTableException('Invalid offset (too large): {}'.format(base_file_record_segment_offset))
+
+		self.file_object.seek(base_file_record_segment_offset)
 		buf = self.file_object.read(self.file_record_segment_size)
 
 		frs = FileRecordSegment(buf)
@@ -647,6 +761,7 @@ class MasterFileTableParser(object):
 
 		paths = []
 
+		attr_file_names = []
 		for attr in file_record.attributes():
 			if type(attr) is AttributeRecordNonresident:
 				continue
@@ -655,10 +770,16 @@ class MasterFileTableParser(object):
 			if type(attr_value) is not Attributes.FileName:
 				continue
 
-			attr_value_to_return = attr_value
+			flags = attr_value.get_flags()
 
-			path_components = [ attr_value.get_file_name() ]
-			parent_reference = attr_value.get_parent_directory()
+			if flags & Attributes.FILE_NAME_NTFS > 0 or flags == 0: # Win32 and POSIX name spaces are preferred.
+				attr_file_names.insert(0, attr_value)
+			else:
+				attr_file_names.append(attr_value)
+
+		for attr_value_to_return in attr_file_names:
+			path_components = [ attr_value_to_return.get_file_name() ]
+			parent_reference = attr_value_to_return.get_parent_directory()
 			parent_reference_number, parent_sequence_number = DecodeFileRecordSegmentReference(parent_reference)
 
 			if parent_reference_number == FILE_NUMBER_ROOT:

@@ -72,6 +72,9 @@ def process_mft():
 	csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
 
 	for file_record in mft.file_records():
+
+		# Parse this file record.
+
 		try:
 			file_paths = mft.build_full_paths(file_record, True)
 		except MFT.MasterFileTableException:
@@ -177,13 +180,11 @@ def process_mft():
 
 				csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
 		else:
-			file_path = ''
-			fn_mtime = ''
-			fn_atime = ''
-			fn_ctime = ''
-			fn_etime = ''
+			csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, '', si_mtime, si_atime, si_ctime, si_etime, si_usn, '', '', '', '', objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
 
-			csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+		# Parse a file name index in this file record (if present).
+
+		attr_index_root = None
 
 		if file_record.get_flags() & MFT.FILE_FILE_NAME_INDEX_PRESENT > 0:
 			for attribute in file_record.attributes():
@@ -191,49 +192,78 @@ def process_mft():
 					attribute_value = attribute.value_decoded()
 
 					if type(attribute_value) is Attributes.IndexRoot:
-						if attribute_value.get_indexed_attribute_type_code() != Attributes.ATTR_TYPE_FILE_NAME:
-							continue
+						if attribute_value.get_indexed_attribute_type_code() == Attributes.ATTR_TYPE_FILE_NAME:
+							attr_index_root = attribute_value
+							break
 
-						for index_entry in attribute_value.index_entries():
-							attr_file_name = Attributes.FileName(index_entry.get_attribute())
+			if attr_index_root is not None:
+				for index_entry in attr_index_root.index_entries():
+					attr_file_name = Attributes.FileName(index_entry.get_attribute())
 
-							if len(file_paths) > 0:
-								dir_path = file_paths[0][0]
-								if dir_path == '/.':
-									dir_path = ''
+					if len(file_paths) > 0:
+						dir_path = file_paths[0][0]
+						if dir_path == '/.':
+							dir_path = ''
 
-								file_path = MFT.PATH_SEPARATOR.join([dir_path, attr_file_name.get_file_name()])
-							else:
-								file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+						file_path = MFT.PATH_SEPARATOR.join([dir_path, attr_file_name.get_file_name()])
+					else:
+						file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
 
-							fr_number = index_entry.get_file_reference()
-							fr_in_use = '?'
+					fr_number = index_entry.get_file_reference()
 
-							if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
-								fr_directory = 'Y'
-							else:
-								fr_directory = 'N'
+					if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
+						fr_directory = 'Y'
+					else:
+						fr_directory = 'N'
 
-							fr_lsn = '?'
+					fn_mtime = format_timestamp(attr_file_name.get_mtime())
+					fn_atime = format_timestamp(attr_file_name.get_atime())
+					fn_ctime = format_timestamp(attr_file_name.get_ctime())
+					fn_etime = format_timestamp(attr_file_name.get_etime())
 
-							si_mtime = ''
-							si_atime = ''
-							si_ctime = ''
-							si_etime = ''
-							si_usn = ''
+					file_size = attr_file_name.get_file_size()
 
-							ads_list = ''
+					csv_writer.writerow(['Index record', fr_number, '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
 
-							fn_mtime = format_timestamp(attr_file_name.get_mtime())
-							fn_atime = format_timestamp(attr_file_name.get_atime())
-							fn_ctime = format_timestamp(attr_file_name.get_ctime())
-							fn_etime = format_timestamp(attr_file_name.get_etime())
+		# Parse slack space in this file record (if present).
 
-							objid_time = ''
+		for slack in file_record.slack():
+			for attr_file_name in slack.carve():
+				parent_directory_reference = attr_file_name.get_parent_directory()
+				parent_fr_number, parent_fr_sequence = MFT.DecodeFileRecordSegmentReference(parent_directory_reference)
 
-							file_size = attr_file_name.get_file_size()
+				try:
+					parent_file_record = mft.get_file_record_by_number(parent_fr_number, parent_fr_sequence)
+					parent_file_paths = mft.build_full_paths(parent_file_record)
+				except MFT.MasterFileTableException:
+					parent_file_path = None
+				else:
+					if len(file_paths) > 0:
+						parent_file_path = parent_file_paths[0]
+					else:
+						parent_file_path = None
 
-							csv_writer.writerow(['Index record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+				if parent_file_path is not None:
+					if parent_file_path == '/.':
+						parent_file_path = ''
+
+					file_path = MFT.PATH_SEPARATOR.join([parent_file_path, attr_file_name.get_file_name()])
+				else:
+					file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+
+				if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
+					fr_directory = 'Y'
+				else:
+					fr_directory = 'N'
+
+				fn_mtime = format_timestamp(attr_file_name.get_mtime())
+				fn_atime = format_timestamp(attr_file_name.get_atime())
+				fn_ctime = format_timestamp(attr_file_name.get_ctime())
+				fn_etime = format_timestamp(attr_file_name.get_etime())
+
+				file_size = attr_file_name.get_file_size()
+
+				csv_writer.writerow(['Slack', '?', '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
 
 def process_usn():
 	global input_file, input_mft, csv_writer
@@ -263,12 +293,12 @@ def process_usn():
 			file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
 			file_paths = mft_file.build_full_paths(file_record)
 		except MFT.MasterFileTableException:
-			fr_file_path = None
+			fr_file_path = ''
 		else:
 			if len(file_paths) > 0:
 				fr_file_path = file_paths[0]
 			else:
-				fr_file_path = None
+				fr_file_path = ''
 
 		csv_writer.writerow([r_usn, r_source, r_reason, fr_reference_number, parent_fr_reference_number, r_timestamp, fr_file_name, fr_file_path])
 
@@ -293,13 +323,13 @@ def process_log():
 	def process_log_record(log_record):
 		global deleted_files
 
+		output_lines = []
+
 		target_attribute_name = None
 		redo_op = log_record.get_redo_operation()
 		undo_op = log_record.get_undo_operation()
 		redo_data = log_record.get_redo_data()
 		undo_data = log_record.get_undo_data()
-
-		output_lines = []
 
 		output_lines.append('LSN: {}'.format(log_record.lsn))
 		output_lines.append('Transaction ID: {}'.format(log_record.transaction_id))
@@ -599,6 +629,8 @@ def process_log():
 		output_file.write('\n\n---\n\n')
 
 def print_usage():
+	print('Extract information from NTFS metadata files')
+	print('')
 	print('Usage:')
 	print(' ntfs_parser --mft <input file ($MFT)> <output file (CSV)>')
 	print(' ntfs_parser --usn <input file ($MFT)> <input file ($UsnJrnl:$J)> <output file (CSV)>')

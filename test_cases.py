@@ -48,6 +48,7 @@ if RUN_SLOW_TESTS:
 MFT_COMPRESSED_SPARSE = os.path.join(TEST_DATA_DIR, 'compressed_sparse.mft')
 MFT_DIFFERENT_LA = os.path.join(TEST_DATA_DIR, 'different_la.mft')
 MFT_DELETED = os.path.join(TEST_DATA_DIR, 'deleted.mft')
+MFT_SLACK = os.path.join(TEST_DATA_DIR, 'slack.mft')
 
 MFT_MIRR = os.path.join(TEST_DATA_DIR, 'boot.mftmirr')
 MFT_MIRR_4K = os.path.join(TEST_DATA_DIR, '4k-large.mftmirr')
@@ -1370,4 +1371,42 @@ def test_mft_mirr():
 			assert value.get_file_name() == file_names.pop(0)
 
 	assert len(file_names) == 0
+	f.close()
+
+def test_mft_slack():
+	f = open(MFT_SLACK, 'rb')
+
+	mft = MFT.MasterFileTableParser(f)
+	file_record = mft.get_file_record_by_number(39)
+
+	file_names_expected = [ 'New Text Document - Copy (3).txt', 'New Text Document - Copy.txt', 'New Text Document.txt' ]
+
+	c = 0
+	for slack in file_record.slack():
+		c += 1
+		assert len(slack.value) == 508
+
+		for file_name in slack.carve():
+			assert type(file_name) is Attributes.FileName
+
+			file_name_str = file_name.get_file_name()
+			assert file_name_str == file_names_expected.pop(0)
+
+	assert c == 1
+	assert len(file_names_expected) == 0
+
+	f.close()
+
+	f = open(MFT_NHC, 'rb')
+
+	mft = MFT.MasterFileTableParser(f)
+	file_record = mft.get_file_record_by_number(8508)
+
+	c = 0
+	for slack in file_record.slack():
+		c += 1
+		assert len(slack.value) > 0
+
+	assert c == 4
+
 	f.close()
