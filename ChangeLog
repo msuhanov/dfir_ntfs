@@ -1,3 +1,9 @@
+Version: 1.0.0-beta6
+
+Check an expected sequence number when getting a file record using its child FRS numbers.
+
+---
+
 Version: 1.0.0-beta5
 
 Resolve a possible bug with the WSL metadata assigned to an index record in the CSV output.

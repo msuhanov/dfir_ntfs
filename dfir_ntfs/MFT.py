@@ -718,6 +718,20 @@ class MasterFileTableParser(object):
 				return FileRecord(frs, [])
 		else:
 			if allow_child_file_record_segment_number:
+				mft_number = frs.get_master_file_table_number()
+				sequence_number = frs.get_sequence_number()
+
+				if not frs.is_in_use(): # The sequence number is incremented each time a file record segment is deallocated (and the new sequence number can be zero).
+					if sequence_number >= 2:
+						sequence_number -= 1
+					elif sequence_number == 0:
+						sequence_number = 0xFFFF # Handle the overflow.
+					# When a file record segment is allocated, the existing sequence number is used, if it is not equal to zero (if it is, then the sequence number is set to one).
+					# Some sources state something different from that.
+
+				if expected_sequence_number is not None and sequence_number != expected_sequence_number:
+					raise MasterFileTableException('A sequence number is not equal to an expected sequence number: {} != {}'.format(sequence_number, expected_sequence_number))
+
 				# A number of a child file record segment (FRS) was given instead of a base one.
 				child_file_record_segment_number = base_file_record_segment_number
 
