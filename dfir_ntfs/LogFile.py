@@ -1093,9 +1093,13 @@ class LogFileParser(object):
 				if cluster_size is not None and cluster_size > 0 and cluster_size % 512 == 0:
 					self.cluster_size = cluster_size
 
-				# Adjust the open attribute table version.
+				# Adjust the version-specific configuration.
+				self.use_dumps = True
 				major_version = ntfs_restart_area.get_major_version()
 				if major_version >= 1:
+					if major_version >= 2:
+						self.use_dumps = False
+
 					self.oat_version = 1
 				else:
 					self.oat_version = 0
@@ -1346,6 +1350,14 @@ class LogFileParser(object):
 		self.sort_lsns()
 
 		for client_id in self.lsns_sorted.keys():
+			latest_oat_dump = None
+			old_oat_dump = None
+			latest_an_dump = None
+			old_an_dump = None
+
+			oat_dump_count = 0
+			an_dump_count = 0
+
 			oat = dict()
 
 			for lsn in self.lsns_sorted[client_id]:
@@ -1356,7 +1368,8 @@ class LogFileParser(object):
 					pass
 				else:
 					if type(client_data_decoded) is NTFSLogRecord:
-						if client_data_decoded.get_redo_operation() == OpenNonresidentAttribute:
+						redo_op = client_data_decoded.get_redo_operation()
+						if redo_op == OpenNonresidentAttribute:
 							attribute_name = client_data_decoded.get_undo_data().decode('utf-16le', errors = 'replace')
 
 							oat_index = client_data_decoded.get_target_attribute()
@@ -1372,8 +1385,26 @@ class LogFileParser(object):
 								oat = dict()
 							else:
 								oat[oat_index] = (oat_entry.get_file_reference(), attribute_name)
+						elif self.use_dumps and redo_op == OpenAttributeTableDump:
+							old_oat_dump = latest_oat_dump
+							latest_oat_dump = OpenAttributeTableDumpParser(client_data_decoded.get_redo_data(), self.oat_version)
+							oat_dump_count += 1
+						elif self.use_dumps and redo_op == AttributeNamesDump:
+							old_an_dump = latest_an_dump
+							latest_an_dump = AttributeNamesDumpParser(client_data_decoded.get_redo_data())
+							an_dump_count += 1
 
 						client_data_decoded.oat = oat.copy()
+
+						if self.use_dumps and oat_dump_count > 0 and oat_dump_count == an_dump_count:
+							client_data_decoded.oat_dump = latest_oat_dump
+							client_data_decoded.an_dump = latest_an_dump
+						elif self.use_dumps and oat_dump_count > 0 and oat_dump_count != an_dump_count:
+							client_data_decoded.oat_dump = old_oat_dump
+							client_data_decoded.an_dump = old_an_dump
+						else:
+							client_data_decoded.oat_dump = None
+							client_data_decoded.an_dump = None
 
 					yield client_data_decoded
 
@@ -1546,6 +1577,12 @@ class NTFSLogRecord(object):
 	oat = None
 	"""An open attribute table (it is set externally in the 'parse_ntfs_records' method of the LogFileParser class)."""
 
+	oat_dump = None
+	"""An open attribute table dump (as raw bytes; it is set externally in the 'parse_ntfs_records' method of the LogFileParser class)."""
+
+	an_dump = None
+	"""An attribute names dump (as raw bytes; it is set externally in the 'parse_ntfs_records' method of the LogFileParser class)."""
+
 	transaction_id = None
 	"""A transaction ID."""
 
@@ -1708,6 +1745,16 @@ class NTFSLogRecord(object):
 			if target_attribute in self.oat.keys():
 				return self.oat[target_attribute]
 
+			# If not found, try the table dumps.
+			if self.oat_dump is not None and self.an_dump is not None:
+				try:
+					target_file_reference = self.oat_dump.find_file_reference_by_index(target_attribute)
+				except ClientException:
+					pass
+				else:
+					target_attribute_name = self.an_dump.find_name_by_index(target_attribute)
+					return (target_file_reference, target_attribute_name)
+
 	def __str__(self):
 		if self.get_redo_offset() > 0:
 			redo_length = self.get_redo_length()
@@ -1823,3 +1870,93 @@ class OpenAttributeEntry0(object):
 		"""Get and return the number of bytes per index buffer."""
 
 		return struct.unpack('<L', self.buf[40 : 44])[0]
+
+class AttributeNameEntry(object):
+	"""This class is used to work with the ATTRIBUTE_NAME_ENTRY structure."""
+
+	buf = None
+	"""Data of this ATTRIBUTE_NAME_ENTRY structure."""
+
+	def __init__(self, attribute_name_entry_raw):
+		self.buf = attribute_name_entry_raw
+
+		if len(self.buf) < 8:
+			raise ClientException('Invalid attribute name entry length: {}'.format(len(self.buf)))
+
+	def get_index(self):
+		"""Get and return the table index (offset) of a corresponding entry in the open attribute table."""
+
+		return struct.unpack('<H', self.buf[0 : 2])[0]
+
+	def get_name_length(self):
+		"""Get and return the name length."""
+
+		return struct.unpack('<H', self.buf[2 : 4])[0]
+
+	def get_name(self):
+		"""Get and return the name."""
+
+		name_buf = self.buf[4 : 4 + self.get_name_length()]
+		name = name_buf.decode('utf-16le', errors = 'replace')
+
+		return name
+
+	def calculate_sizeof(self):
+		"""Calculate and return the size of this entry."""
+
+		return 4 + self.get_name_length() + 2 # Include the terminating null character.
+
+class AttributeNamesDumpParser(object):
+	"""This class is used to work with the array of ATTRIBUTE_NAME_ENTRY structures."""
+
+	buf = None
+	"""Data of this array."""
+
+	def __init__(self, attribute_names_dump_raw):
+		self.buf = attribute_names_dump_raw
+
+	def find_name_by_index(self, index):
+		"""Find and return the name by its index (or None, if not found)."""
+
+		pos = 0
+		while pos < len(self.buf):
+			attribute_name_entry_buf = self.buf[pos : ]
+
+			try:
+				attribute_name_entry = AttributeNameEntry(attribute_name_entry_buf)
+			except ClientException:
+				break
+
+			attribute_name_entry_index = attribute_name_entry.get_index()
+			if attribute_name_entry_index == index:
+				return attribute_name_entry.get_name()
+
+			pos += attribute_name_entry.calculate_sizeof()
+
+class OpenAttributeTableDumpParser(object):
+	"""This class is used to work with the array of OPEN_ATTRIBUTE_ENTRY structures."""
+
+	buf = None
+	"""Data of this array."""
+
+	oat_class = None
+	"""Either OpenAttributeEntry0 or OpenAttributeEntry1."""
+
+	def __init__(self, attribute_names_dump_raw, version):
+		self.buf = attribute_names_dump_raw
+
+		if version >= 1:
+			self.oat_class = OpenAttributeEntry1
+		else:
+			self.oat_class = OpenAttributeEntry0
+
+	def find_file_reference_by_index(self, index):
+		"""Find and return the file reference using the entry index."""
+
+		if index >= len(self.buf):
+			raise ClientException('Invalid index: {}'.format(index))
+
+		open_attribute_entry_buf = self.buf[index : ]
+		open_attribute_entry = self.oat_class(open_attribute_entry_buf)
+
+		return open_attribute_entry.get_file_reference()

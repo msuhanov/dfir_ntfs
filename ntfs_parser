@@ -358,6 +358,10 @@ def process_log():
 				target_reference, target_attribute_name = target
 
 				output_lines.append('Target (file reference number): {}'.format(target_reference))
+
+				if target_attribute_name is None:
+					target_attribute_name = '-'
+
 				output_lines.append('Target (attribute name): {}'.format(target_attribute_name))
 
 				fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(target_reference)
@@ -376,7 +380,7 @@ def process_log():
 				if fr_file_path is not None:
 					output_lines.append('Target path (from $MFT): {}'.format(fr_file_path))
 			else:
-				output_lines.append('Unknown target')
+				output_lines.append('Unknown target, target attribute: {}'.format(log_record.get_target_attribute()))
 
 		offset_in_target = log_record.calculate_offset_in_target()
 		if offset_in_target is not None:
