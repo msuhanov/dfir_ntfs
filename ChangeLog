@@ -1,3 +1,9 @@
+Version: 1.0.0-beta8
+
+Minor update.
+
+---
+
 Version: 1.0.0-beta7
 
 Use open attribute table dumps and dumps of attribute names when parsing the $LogFile journal.

@@ -1000,6 +1000,9 @@ class LogFileParser(object):
 
 			client_previous_lsn = log_record_header.get_client_previous_lsn()
 			candidate_log_page_number, candidate_offset_in_page = self.lsn_to_offset(client_previous_lsn)
+
+			if candidate_log_page_number == 0:
+				return
 			
 			candidate_log_record_page = self.get_log_record_page_by_number(candidate_log_page_number)
 			if candidate_log_record_page is not None:
@@ -1029,6 +1032,9 @@ class LogFileParser(object):
 
 			client_undo_next_lsn = log_record_header.get_client_undo_next_lsn()
 			candidate_log_page_number, candidate_offset_in_page = self.lsn_to_offset(client_undo_next_lsn)
+
+			if candidate_log_page_number == 0:
+				return
 			
 			candidate_log_record_page = self.get_log_record_page_by_number(candidate_log_page_number)
 			if candidate_log_record_page is not None:
@@ -1113,7 +1119,6 @@ class LogFileParser(object):
 		for lsn in new_lsns:
 			# Validate a new LSN.
 			log_page_number, offset = self.lsn_to_offset(lsn)
-
 			if log_page_number == 0:
 				continue
 
