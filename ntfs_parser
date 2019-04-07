@@ -576,6 +576,47 @@ def process_log():
 						output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_si.get_etime())))
 						output_lines.append('')
 
+		if redo_op == LogFile.AddIndexEntryRoot or redo_op == LogFile.AddIndexEntryAllocation or redo_op == LogFile.WriteEndOfIndexBuffer or undo_op == LogFile.AddIndexEntryRoot or undo_op == LogFile.AddIndexEntryAllocation or undo_op == LogFile.WriteEndOfIndexBuffer:
+			if redo_op == LogFile.AddIndexEntryRoot or redo_op == LogFile.AddIndexEntryAllocation or redo_op == LogFile.WriteEndOfIndexBuffer:
+				index_entry = Attributes.IndexEntry(redo_data)
+			else:
+				index_entry = Attributes.IndexEntry(undo_data)
+
+			attr_value_buf = index_entry.get_attribute()
+			if attr_value_buf is not None and len(attr_value_buf) > 66:
+				attr_fn = Attributes.FileName(attr_value_buf)
+
+				output_lines.append('$FILE_NAME in index:')
+				try:
+					output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_fn.get_mtime())))
+					output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_fn.get_atime())))
+					output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_fn.get_ctime())))
+					output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_fn.get_etime())))
+					output_lines.append(' * File name: {}'.format(attr_fn.get_file_name()))
+				except (ValueError, OverflowError):
+					pass
+
+				parent_reference = attr_fn.get_parent_directory()
+				output_lines.append(' * Parent (file reference number): {}'.format(parent_reference))
+
+				fr_number, fr_sequence = MFT.DecodeFileRecordSegmentReference(parent_reference)
+
+				try:
+					file_record = mft_file.get_file_record_by_number(fr_number, fr_sequence)
+					file_paths = mft_file.build_full_paths(file_record)
+				except MFT.MasterFileTableException:
+					fr_file_path = None
+				else:
+					if len(file_paths) > 0:
+						fr_file_path = file_paths[0]
+					else:
+						fr_file_path = None
+
+				if fr_file_path is not None:
+					output_lines.append(' * Parent path (from $MFT): {}'.format(fr_file_path))
+
+				output_lines.append('')
+
 		if target_attribute_name == '$J':
 			usn_data_1 = None
 			usn_data_2 = None
