@@ -1,3 +1,13 @@
+Version: 1.0.0-beta10
+
+Add a method to get a file object from its path.
+Add a method to get data runs for a nonresident $DATA attribute.
+Add a module to work with an NTFS boot sector.
+Add a class to read an $MFT file from a volume.
+Minor changes.
+
+---
+
 Version: 1.0.0-beta9
 
 Print information from index records found in the $LogFile journal.

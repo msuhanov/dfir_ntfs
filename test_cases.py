@@ -9,9 +9,8 @@ import hashlib
 import datetime
 import re
 import io
-from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile
+from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector
 
-RUN_SLOW_TESTS = True
 TEST_DATA_DIR = 'test_data'
 
 LXATTRB_WSL_1 = os.path.join(TEST_DATA_DIR, 'lxattrb_wsl_1.bin')
@@ -38,12 +37,10 @@ MFT_NHC_PARSED = os.path.join(TEST_DATA_DIR, 'nist-hacking-case.fls')
 MFT_4K = os.path.join(TEST_DATA_DIR, '4k-large.mft')
 MFT_4K_PARSED = os.path.join(TEST_DATA_DIR, '4k-large.fls')
 
-MFT_ORHPAN = os.path.join(TEST_DATA_DIR, 'orphan.mft')
-MFT_ORHPAN_PARSED = os.path.join(TEST_DATA_DIR, 'orphan.fls')
+MFT_ORPHAN = os.path.join(TEST_DATA_DIR, 'orphan.mft')
+MFT_ORPHAN_PARSED = os.path.join(TEST_DATA_DIR, 'orphan.fls')
 
-MFT_ALLOCATED_TEST_LIST = [ (MFT_UNICODE, MFT_UNICODE_PARSED), (MFT_4K, MFT_4K_PARSED), (MFT_ORHPAN, MFT_ORHPAN_PARSED) ]
-if RUN_SLOW_TESTS:
-	MFT_ALLOCATED_TEST_LIST.append((MFT_NHC, MFT_NHC_PARSED))
+MFT_ALLOCATED_TEST_LIST = [ (MFT_UNICODE, MFT_UNICODE_PARSED), (MFT_4K, MFT_4K_PARSED), (MFT_ORPHAN, MFT_ORPHAN_PARSED), (MFT_NHC, MFT_NHC_PARSED) ]
 
 MFT_COMPRESSED_SPARSE = os.path.join(TEST_DATA_DIR, 'compressed_sparse.mft')
 MFT_DIFFERENT_LA = os.path.join(TEST_DATA_DIR, 'different_la.mft')
@@ -52,6 +49,10 @@ MFT_SLACK = os.path.join(TEST_DATA_DIR, 'slack.mft')
 
 MFT_MIRR = os.path.join(TEST_DATA_DIR, 'boot.mftmirr')
 MFT_MIRR_4K = os.path.join(TEST_DATA_DIR, '4k-large.mftmirr')
+
+MFT_MAPPING_PAIRS_1 = os.path.join(TEST_DATA_DIR, 'mapping_pairs_1.mft')
+MFT_MAPPING_PAIRS_2 = os.path.join(TEST_DATA_DIR, 'mapping_pairs_2.mft')
+MFT_MAPPING_PAIRS_TEST_LIST = [ MFT_MAPPING_PAIRS_1, MFT_MAPPING_PAIRS_2, MFT_UNICODE, MFT_4K, MFT_ORPHAN, MFT_NHC, MFT_MIRR, MFT_MIRR_4K, MFT_COMPRESSED_SPARSE, MFT_DIFFERENT_LA, MFT_DELETED, MFT_SLACK ]
 
 USN_1 = os.path.join(TEST_DATA_DIR, 'usn_1170953448.bin')
 USN_2 = os.path.join(TEST_DATA_DIR, 'usn_1170990440.bin')
@@ -67,6 +68,14 @@ LOGFILE_10 = os.path.join(TEST_DATA_DIR, 'LogFile_10.bin')
 LOGFILE_10_DG = os.path.join(TEST_DATA_DIR, 'LogFile_10_downgraded.bin')
 LOGFILE_10_4K = os.path.join(TEST_DATA_DIR, 'LogFile_10_large.bin')
 LOGFILE_empty = os.path.join(TEST_DATA_DIR, 'LogFile_empty.bin')
+
+BOOT_4K = os.path.join(TEST_DATA_DIR, '4k.boot')
+BOOT_64K = os.path.join(TEST_DATA_DIR, '64k.boot')
+BOOT_128K = os.path.join(TEST_DATA_DIR, '128k.boot')
+BOOT_4KN = os.path.join(TEST_DATA_DIR, '4kn.boot')
+BOOT_512 = os.path.join(TEST_DATA_DIR, '512.boot')
+
+NTFS_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_frag_mft.bin')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -398,7 +407,7 @@ def test_mft_4k_resident_data():
 	f.close()
 
 def test_mft_unicode_volume_name():
-	f = open(MFT_ORHPAN, 'rb')
+	f = open(MFT_ORPHAN, 'rb')
 	mft = MFT.MasterFileTableParser(f)
 
 	volume_name = None
@@ -414,7 +423,7 @@ def test_mft_unicode_volume_name():
 	f.close()
 
 def test_mft_orphan_files():
-	f = open(MFT_ORHPAN, 'rb')
+	f = open(MFT_ORPHAN, 'rb')
 	mft = MFT.MasterFileTableParser(f)
 
 	cnt = 0
@@ -1408,5 +1417,493 @@ def test_mft_slack():
 		assert len(slack.value) > 0
 
 	assert c == 4
+
+	f.close()
+
+def test_path_resolution():
+	f = open(MFT_NHC, 'rb')
+
+	mft = MFT.MasterFileTableParser(f)
+
+	def resolve_and_validate(path, file_number):
+		file_record = mft.get_file_record_by_path(path, False)
+		if file_number is not None:
+			assert file_record is not None
+			assert file_record.base_frs.get_master_file_table_number() == file_number
+		else:
+			assert file_record is None
+
+		file_record = mft.get_file_record_by_path(path, True)
+		if file_number is not None:
+			assert file_record is not None
+			assert file_record.base_frs.get_master_file_table_number() == file_number
+		else:
+			assert file_record is None
+
+		if path != path.lower():
+			file_record = mft.get_file_record_by_path(path.lower(), False)
+			if file_number is not None:
+				assert file_record is not None
+				assert file_record.base_frs.get_master_file_table_number() == file_number
+			else:
+				assert file_record is None
+
+		if path != path.upper():
+			file_record = mft.get_file_record_by_path(path.upper(), False)
+			if file_number is not None:
+				assert file_record is not None
+				assert file_record.base_frs.get_master_file_table_number() == file_number
+			else:
+				assert file_record is None
+
+	resolve_and_validate('/WINDOWS/Installer/{6C31E111-96BB-4ADC-9C81-E6D3EEDDD8D3}/PowerCalc.exe', 10182)
+	resolve_and_validate('/WINDOWS/system32/usrvoica.dll', 2244)
+	resolve_and_validate('/WINDOWS/PCHEALTH/HELPCTR/OfflineCache/Professional_32#0409/0000018b.query', 6919)
+	resolve_and_validate('/Program Files/MSN/MSNCoreFiles/dw.exe', 5369)
+	resolve_and_validate('/Program Files/Anonymizer/Toolbar/Images/software-D.bmp', 9896)
+
+	resolve_and_validate('/Documents and Settings/All Users/Application Data/Microsoft/Crypto/DSS/MachineKeys', 3713)
+	resolve_and_validate('/Documents and Settings/All Users/Application Data/Microsoft/Crypto/DSS/MachineKeys/', 3713)
+	resolve_and_validate('/WINDOWS/PCHEALTH/HELPCTR/Logs', 6337)
+	resolve_and_validate('/WINDOWS/PCHEALTH/HELPCTR/Logs/', 6337)
+	resolve_and_validate('/WINDOWS', 458)
+	resolve_and_validate('/WINDOWS/', 458)
+
+	resolve_and_validate('/', 5)
+
+	resolve_and_validate('/boot.ini', 3664)
+	resolve_and_validate('/CONFIG.SYS', 129)
+	resolve_and_validate('/$MFT', 0)
+	resolve_and_validate('/$MFTMirr', 1)
+	resolve_and_validate('/$LogFile', 2)
+
+	with pytest.raises(MFT.MasterFileTableException):
+		mft.get_file_record_by_path('')
+
+	with pytest.raises(MFT.MasterFileTableException):
+		mft.get_file_record_by_path('pagefile.sys')
+
+	with pytest.raises(MFT.MasterFileTableException):
+		mft.get_file_record_by_path('//')
+
+	with pytest.raises(MFT.MasterFileTableException):
+		mft.get_file_record_by_path('///')
+
+	with pytest.raises(MFT.MasterFileTableException):
+		mft.get_file_record_by_path('//a/')
+
+	resolve_and_validate('/$mftmirr1', None)
+	resolve_and_validate('/windows1/', None)
+	resolve_and_validate('/WINDOWS/system32/usrvoica.dll1', None)
+	resolve_and_validate('/WINDOWS/system32/1/usrvoica.dll1', None)
+	resolve_and_validate('/WINDOWS/system32/ / /usrvoica.dll', None)
+	resolve_and_validate('/WINDOWS/system32/WINDOWS/usrvoica.dll', None)
+	resolve_and_validate('/Anonymizer/Program Files/Anonymizer/Toolbar/Images/software-D.bmp', None)
+	resolve_and_validate('/Program Files/Program Files/Anonymizer/Toolbar/Images/software-D.bmp', None)
+
+	assert mft.get_file_record_by_path('/$mftmirr', True) is None
+	assert mft.get_file_record_by_path('/Program FILES', True) is None
+	assert mft.get_file_record_by_path('/Program FILES/', True) is None
+	assert mft.get_file_record_by_path('/WINDOWS/System32', True) is None
+	assert mft.get_file_record_by_path('/WINDOWS/System32/', True) is None
+
+	assert mft.get_file_record_by_path('/WINDOWS/system32/', True).get_master_file_table_number() == 459
+	assert mft.get_file_record_by_path('/WINDOWS/system32', True).get_master_file_table_number() == 459
+
+	assert mft.get_file_record_by_path('/$mftmirr', False).get_master_file_table_number() == 1
+	assert mft.get_file_record_by_path('/$mftmirr/', False) is None
+	assert mft.get_file_record_by_path('/Program Files/MSN/MSNCoreFiles/dw.exe/', False) is None
+
+	assert mft.get_file_record_by_path('/$mftmirr/test', False) is None
+	assert mft.get_file_record_by_path('/$mftmirr/test/', False) is None
+
+	f.close()
+
+def test_mapping_pairs():
+	for mft_filename in MFT_MAPPING_PAIRS_TEST_LIST:
+		f = open(mft_filename, 'rb')
+
+		mft = MFT.MasterFileTableParser(f)
+		for fr in mft.file_records():
+			data_runs = fr.get_data_runs()
+
+		f.close()
+
+	f = open(MFT_DIFFERENT_LA, 'rb')
+	mft = MFT.MasterFileTableParser(f)
+
+	c = 0
+	for fr in mft.file_records():
+		data_runs = fr.get_data_runs('$Verify')
+		if data_runs is not None:
+			c += 1
+			assert len(data_runs) > 0
+
+	assert c == 1
+
+	fr = mft.get_file_record_by_path('/$Extend/$RmMetadata/$Repair')
+	data_runs = fr.get_data_runs('$Corrupt')
+	assert len(data_runs) > 0
+
+	f.close()
+
+	f = open(MFT_NHC, 'rb')
+	mft = MFT.MasterFileTableParser(f)
+	for fr in mft.file_records():
+		data_runs = fr.get_data_runs('$Verify')
+		assert data_runs is None
+
+	f.close()
+
+	f = open(MFT_MAPPING_PAIRS_1, 'rb')
+	mft = MFT.MasterFileTableParser(f)
+
+	fr = mft.get_file_record_by_path('/test_dir/empty.txt')
+	assert fr.get_data_runs() is None
+
+	fr = mft.get_file_record_by_path('/test_dir/entirely_sparse')
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (None, 32) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/partially_sparse')
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (None, 10), (1216, 1), (None, 9), (1226, 1), (None, 9), (1236, 1) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/simple')
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (154, 1) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/partially_sparse_2') # No sparse ranges.
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (137, 16) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/partially_sparse_3')
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (1278, 1), (None, 3), (1282, 1) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/fragmented.txt')
+	data_runs = fr.get_data_runs()
+	assert data_runs == [ (1222, 4), (1227, 9), (1897, 150), (1237, 41) ]
+
+	f.close()
+
+	f = open(MFT_MAPPING_PAIRS_2, 'rb')
+	mft = MFT.MasterFileTableParser(f)
+
+	fr = mft.get_file_record_by_path('/$Extend/$RmMetadata/$Repair')
+	data_runs = fr.get_data_runs('$Corrupt')
+	assert data_runs == [ (38, 512) ]
+
+	fr = mft.get_file_record_by_path('/$Extend/$RmMetadata/$Repair')
+	data_runs = fr.get_data_runs('$Verify')
+	assert data_runs == [ (550, 75) ]
+
+	fr = mft.get_file_record_by_path('/test_dir/test_file.txt')
+	data_runs = fr.get_data_runs('')
+	assert data_runs == [ (2004, 16) ] # No sparse ranges.
+
+	f.close()
+
+def test_boot_sectors():
+	with pytest.raises(BootSector.BootSectorException):
+		bs = BootSector.BootSector(b'')
+
+	with pytest.raises(BootSector.BootSectorException):
+		bs = BootSector.BootSector(b'\x00')
+
+	with pytest.raises(BootSector.BootSectorException):
+		bs = BootSector.BootSector(b'\x00' * 512)
+
+	with pytest.raises(BootSector.BootSectorException):
+		bs = BootSector.BootSector(b'\x00' * 513)
+
+	f = open(BOOT_4K, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 512
+	assert bs.get_sectors_per_cluster() == 8
+	assert bs.get_file_record_segment_size() == 1024
+	assert bs.get_index_record_size() == 4096
+	assert bs.get_total_number_of_sectors() == 124700671
+	assert bs.get_first_mft_cluster() == 786432
+	assert bs.get_first_mftmirr_cluster() == 2
+	assert bs.get_serial_number() == 0x7EFEEEDBFEEE8B2B
+	assert bs.is_boot_code_present()
+
+	f.close()
+
+	f = open(BOOT_64K, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 512
+	assert bs.get_sectors_per_cluster() == 128
+	assert bs.get_file_record_segment_size() == 1024
+	assert bs.get_index_record_size() == 4096
+	assert bs.is_boot_code_present()
+
+	f.close()
+
+	f = open(BOOT_128K, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 512
+	assert bs.get_sectors_per_cluster() == 256
+	assert bs.get_file_record_segment_size() == 1024
+	assert bs.get_index_record_size() == 4096
+	assert bs.get_total_number_of_sectors() == 67102719
+	assert bs.get_first_mft_cluster() == 24576
+
+	f.close()
+
+	f = open(BOOT_4KN, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 4096
+	assert bs.get_sectors_per_cluster() == 1
+	assert bs.get_file_record_segment_size() == 4096
+	assert bs.get_index_record_size() == 4096
+	assert bs.get_total_number_of_sectors() == 14335
+	assert bs.get_first_mft_cluster() == 4778
+	assert bs.get_first_mftmirr_cluster() == 2
+	assert bs.get_serial_number() == 0x187EB6507EB62682
+	assert bs.is_boot_code_present()
+
+	f.seek(2)
+	buf = b'\x00\x00' + f.read() # Wipe the first two bytes.
+
+	bs = BootSector.BootSector(buf)
+	assert not bs.is_boot_code_present()
+
+	f.close()
+
+	f = open(BOOT_512, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 512
+	assert bs.get_sectors_per_cluster() == 1
+	assert bs.get_file_record_segment_size() == 1024
+	assert bs.get_index_record_size() == 4096
+	assert bs.get_serial_number() == 0xA6EE1E1BEE1DE479
+	assert bs.is_boot_code_present()
+
+	f.seek(2)
+	buf = b'\x00\x00' + f.read() # Wipe the first two bytes.
+
+	bs = BootSector.BootSector(buf)
+	assert not bs.is_boot_code_present()
+
+	f.close()
+
+def test_file_system():
+	f = open(NTFS_FRAGMENTED_MFT, 'rb')
+
+	with pytest.raises(BootSector.BootSectorException):
+		fs = MFT.FileSystemParser(f, 0)
+
+	fs = MFT.FileSystemParser(f, 128 * 512)
+
+	assert fs.boot.is_boot_code_present()
+	assert fs.boot.get_serial_number() == 0x98E46DB5E46D9672
+
+	assert fs.boot.get_bytes_per_sector() == 512
+	assert fs.boot.get_sectors_per_cluster() == 8
+
+	assert fs.boot.get_first_mft_cluster() == 597
+	assert fs.boot.get_first_mftmirr_cluster() == 2
+
+	assert fs.boot.get_file_record_segment_size() == 1024
+	assert fs.boot.get_index_record_size() == 4096
+
+	assert fs.boot.get_total_number_of_sectors() == 14335
+
+	assert len(fs.mft_data_runs) == 5
+	assert fs.mft_data_runs[0] == (597, 235)
+	assert fs.mft_data_runs[1] == (1164, 116)
+	assert fs.mft_data_runs[2] == (1304, 136)
+	assert fs.mft_data_runs[3] == (1456, 112)
+	assert fs.mft_data_runs[4] == (1616, 169)
+
+	assert fs.mft_size == 3145728
+
+	mft_md5 = '3a75da5a96eeab4850b811df1c6b6ec9'
+
+	md5 = hashlib.md5()
+	md5.update(fs.read())
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(8192)
+		md5.update(buf)
+		if len(buf) != 8192:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(4096)
+		md5.update(buf)
+		if len(buf) != 4096:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(512)
+		md5.update(buf)
+		if len(buf) != 512:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(128)
+		md5.update(buf)
+		if len(buf) != 128:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(17)
+		md5.update(buf)
+		if len(buf) != 17:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(3)
+		md5.update(buf)
+		if len(buf) != 3:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(2)
+		md5.update(buf)
+		if len(buf) != 2:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(1)
+		md5.update(buf)
+		if len(buf) != 1:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	while True:
+		buf = fs.read(8193)
+		md5.update(buf)
+		if len(buf) != 8193:
+			break
+
+	assert md5.hexdigest() == mft_md5
+
+	assert fs.seek(33333) == 33333
+	assert fs.tell() == 33333
+	assert len(fs.read(0)) == 0
+	assert fs.read(1) == b'\x00'
+
+	fs.seek(0x81D5)
+	assert len(fs.read(0)) == 0
+	assert fs.read(1) == b'\x79'
+
+	md5 = hashlib.md5()
+	fs.seek(0)
+	buf = fs.read(8194)
+	md5.update(buf)
+	assert md5.hexdigest() != mft_md5
+
+	md5 = hashlib.md5()
+
+	fs.seek(33333)
+	buf_2 = fs.read(-1)
+
+	fs.seek(0)
+	buf_1 = fs.read(33333)
+	assert len(buf_1) == 33333
+
+	fs.seek(0)
+	buf_t = fs.read(33333+81920)
+
+	md5.update(buf_1)
+	md5.update(buf_2)
+
+	assert md5.hexdigest() == mft_md5
+	assert buf_t[-81920 : ] == buf_2[ : 81920]
+
+	md5 = hashlib.md5()
+
+	fs.seek(1003520)
+	buf_2 = fs.read(-1)
+
+	fs.seek(0)
+	buf_1 = fs.read(1003520)
+	assert len(buf_1) == 1003520
+
+	md5.update(buf_1)
+	md5.update(buf_2)
+
+	assert md5.hexdigest() == mft_md5
+
+	assert fs.seek(-1, 2) == fs.mft_size - 1
+	assert fs.tell() == fs.mft_size - 1
+
+	assert fs.seek(1, 2) == fs.mft_size + 1
+	assert fs.tell() == fs.mft_size + 1
+
+	assert fs.seek(0, 2) == fs.mft_size
+	assert fs.tell() == fs.mft_size
+
+	assert fs.seek(0) == 0
+	assert fs.tell() == 0
+
+	fs.seek(0)
+	assert len(fs.read(9999999999999999)) == fs.mft_size
+
+	fs.seek(4096 + 33)
+	assert len(fs.read(9999999999999999)) == fs.mft_size - 4096 - 33
+
+	mft = MFT.MasterFileTableParser(fs)
+	fr = mft.get_file_record_by_path('/2857')
+	assert fr.get_master_file_table_number() == 2900
+	assert fr.get_logfile_sequence_number() > 0
+
+	lsn = fr.get_logfile_sequence_number()
+
+	c = 0
+	for fr in mft.file_records():
+		if fr.get_master_file_table_number() == 2900:
+			assert fr.get_logfile_sequence_number() == lsn
+			c += 1
+
+	assert c == 1
 
 	f.close()

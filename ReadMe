@@ -5,7 +5,11 @@ dfir_ntfs: an NTFS parser for digital forensics & incident response
 
 - Parse $MFT, $UsnJrnl:$J, $LogFile files, extract as much data as possible.
 
-2. License
+2. Installation
+
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0-beta10.tar.gz
+
+3. License
 
 This project is made available under the terms of the GNU GPL, version 3.
 See the 'License' file.

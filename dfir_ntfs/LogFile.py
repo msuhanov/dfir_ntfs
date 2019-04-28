@@ -187,25 +187,21 @@ def UnprotectSectors(Buffer):
 class LogFileException(Exception):
 	"""This is a top-level exception for this module."""
 
-	pass
+	def __init__(self, value):
+		self._value = value
+
+	def __str__(self):
+		return repr(self._value)
 
 class UpdateSequenceArrayException(LogFileException):
 	"""This exception is raised when something is wrong with an update sequence array."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class RestartPageException(LogFileException):
 	"""This exception is raised when something is wrong with a restart page."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class EmptyLogFileException(RestartPageException):
 	"""This exception is raised when the log file is empty."""
@@ -215,38 +211,22 @@ class EmptyLogFileException(RestartPageException):
 class RestartAreaException(LogFileException):
 	"""This exception is raised when something is wrong with a restart area."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class ClientRecordException(LogFileException):
 	"""This exception is raised when something is wrong with a client record."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class LogRecordPageException(LogFileException):
 	"""This exception is raised when something is wrong with a log record page."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class ClientException(LogFileException):
 	"""This exception is raised when something is wrong with client data."""
 
-	def __init__(self, value):
-		self._value = value
-
-	def __str__(self):
-		return repr(self._value)
+	pass
 
 class RestartPage(object):
 	"""This class is used to work with a restart page."""

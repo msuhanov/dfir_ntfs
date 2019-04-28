@@ -410,13 +410,16 @@ class ObjectID(GenericAttribute):
 			print(' Extra data is set')
 
 class Data(GenericAttribute):
-	"""$DATA (resident only)."""
+	"""$DATA."""
 
 	def print_information(self):
 		"""Print all information in a human-readable form."""
 
-		print('$DATA (resident):')
-		print(' Length (bytes): {}'.format(len(self.value)))
+		if self.value is not None:
+			print('$DATA:')
+			print(' Length (bytes): {}'.format(len(self.value)))
+		else:
+			print('$DATA')
 
 AttributeListEntry = namedtuple('AttributeListEntry', [ 'attribute_type_code', 'attribute_name', 'attribute_instance', 'lowest_vcn', 'segment_reference' ])
 
