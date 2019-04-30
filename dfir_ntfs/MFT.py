@@ -1319,3 +1319,6 @@ class FileSystemParser(object):
 		"""The close() method for an $MFT file in a volume. This method does nothing."""
 
 		pass
+
+	def __str__(self):
+		return 'FileSystemParser'
