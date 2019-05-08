@@ -30,7 +30,7 @@ class BootSector(object):
 			raise BootSectorException('Invalid signature (not an NTFS boot sector)')
 
 	def get_signature(self):
-		"""Get and return the boot signature."""
+		"""Get and return the volume signature (the OEM name)."""
 
 		return self.boot_sector_data[3 : 11]
 

@@ -72,10 +72,12 @@ LOGFILE_empty = os.path.join(TEST_DATA_DIR, 'LogFile_empty.bin')
 BOOT_4K = os.path.join(TEST_DATA_DIR, '4k.boot')
 BOOT_64K = os.path.join(TEST_DATA_DIR, '64k.boot')
 BOOT_128K = os.path.join(TEST_DATA_DIR, '128k.boot')
-BOOT_4KN = os.path.join(TEST_DATA_DIR, '4kn.boot')
+BOOT_4Kn = os.path.join(TEST_DATA_DIR, '4kn.boot')
 BOOT_512 = os.path.join(TEST_DATA_DIR, '512.boot')
+BOOT_NOBOOTCODE = os.path.join(TEST_DATA_DIR, 'nobootcode.boot')
 
 NTFS_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_frag_mft.bin')
+NTFS_EXTREMELY_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_extremely_fragmented_mft.raw') # This file is too large to be included into the repository.
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -318,7 +320,6 @@ def test_frs():
 	assert frs.get_logfile_sequence_number() == 31832129
 	assert frs.get_master_file_table_number() == 11072
 
-	attr_list = None
 	i = 0
 	for attr in frs.attributes():
 		if i == 0:
@@ -1658,7 +1659,7 @@ def test_boot_sectors():
 
 	f.close()
 
-	f = open(BOOT_4KN, 'rb')
+	f = open(BOOT_4Kn, 'rb')
 	buf = f.read()
 
 	bs = BootSector.BootSector(buf)
@@ -1695,6 +1696,17 @@ def test_boot_sectors():
 	buf = b'\x00\x00' + f.read() # Wipe the first two bytes.
 
 	bs = BootSector.BootSector(buf)
+	assert not bs.is_boot_code_present()
+
+	f.close()
+
+	f = open(BOOT_NOBOOTCODE, 'rb')
+	buf = f.read()
+
+	bs = BootSector.BootSector(buf)
+	assert bs.get_bytes_per_sector() == 512
+	assert bs.get_file_record_segment_size() == 1024
+	assert bs.get_index_record_size() == 4096
 	assert not bs.is_boot_code_present()
 
 	f.close()
@@ -1905,5 +1917,35 @@ def test_file_system():
 			c += 1
 
 	assert c == 1
+
+	fs.seek(1024 * 50 + 1025)
+	assert fs.read(1) == b'I'
+	assert fs.read(2) == b'LE'
+
+	fs.close()
+
+	f.close()
+
+def test_file_system_extremely_fragmented_mft():
+	try:
+		f = open(NTFS_EXTREMELY_FRAGMENTED_MFT, 'rb')
+	except Exception:
+		pytest.skip('No test file found')
+
+	fs = MFT.FileSystemParser(f, 2048 * 512)
+	md5 = hashlib.md5()
+
+	bytes_read = 0
+	while True:
+		buf = fs.read(16384)
+
+		md5.update(buf)
+		bytes_read += len(buf)
+
+		if len(buf) != 16384:
+			break
+
+	assert md5.hexdigest() == 'ed9c202405fd9a28b7e0ee96e3f07b33'
+	assert bytes_read == 52166656000
 
 	f.close()

@@ -527,10 +527,34 @@ class AttributeRecordNonresident(object):
 
 		return ResolveAttributeType(self.type_code)
 
-	def value_decoded(self, volume_object, cluster_size):
-		"""Return a decoded value (as an object from the Attributes module). A file object for a volume and a cluster size (in bytes) should be given."""
+	def value_decoded(self, volume_object, cluster_size, volume_offset = 0):
+		"""Return a decoded value (as an object from the Attributes module). A file object for a volume, a cluster size (in bytes), and a volume offset (in bytes) should be given."""
 
-		raise NotImplementedError('Nonresident attribute records are not supported')
+		if self.type_code == Attributes.ATTR_TYPE_ATTRIBUTE_LIST:
+			value = b''
+
+			for curr_offset, curr_length in DecodeMappingPairs(self.mapping_pairs):
+				if curr_offset is None:
+					raise MasterFileTableException('Unexpected sparse data range')
+
+				volume_object.seek(volume_offset + curr_offset * cluster_size)
+				data = volume_object.read(curr_length * cluster_size)
+
+				if len(data) != curr_length * cluster_size:
+					raise MasterFileTableException('Truncated data read from a volume')
+
+				value += data
+
+			value = value[ : self.file_size]
+
+			if self.type_code in Attributes.AttributeTypes.keys():
+				# A known attribute.
+				return Attributes.AttributeTypes[self.type_code][1](value)
+
+			# An unknown attribute.
+			return Attributes.GenericAttribute(value)
+
+		raise NotImplementedError('Nonresident attribute records are not fully supported')
 
 	def __str__(self):
 		if self.name is None:
@@ -1025,9 +1049,9 @@ class MasterFileTableParser(object):
 		for attr_value_to_return in attr_file_names:
 			path_components = [ attr_value_to_return.get_file_name() ]
 			parent_reference = attr_value_to_return.get_parent_directory()
-			parent_reference_number, parent_sequence_number = DecodeFileRecordSegmentReference(parent_reference)
+			parent_segment_number, parent_sequence_number = DecodeFileRecordSegmentReference(parent_reference)
 
-			if parent_reference_number == FILE_NUMBER_ROOT:
+			if parent_segment_number == FILE_NUMBER_ROOT:
 				path_components.append('') # Add a root directory.
 				path_components.reverse()
 
@@ -1039,7 +1063,7 @@ class MasterFileTableParser(object):
 				continue
 
 			try:
-				parent_file_record = self.get_file_record_by_number(parent_reference_number, parent_sequence_number, False)
+				parent_file_record = self.get_file_record_by_number(parent_segment_number, parent_sequence_number, False)
 			except MasterFileTableException:
 				# An invalid parent file record.
 				path_components.append(UNKNOWN_PATH_PLACEHOLDER)
@@ -1049,30 +1073,30 @@ class MasterFileTableParser(object):
 					path_components.append(UNKNOWN_PATH_PLACEHOLDER)
 				else:
 					track = set()
-					track.add(parent_reference_number)
+					track.add(parent_segment_number)
 
 					current_file_record = parent_file_record
 					while True:
 						file_name, parent_reference = get_preferred_file_name(current_file_record)
-						parent_reference_number, parent_sequence_number = DecodeFileRecordSegmentReference(parent_reference)
+						parent_segment_number, parent_sequence_number = DecodeFileRecordSegmentReference(parent_reference)
 
 						path_components.append(file_name)
 
-						if parent_reference_number in track:
+						if parent_segment_number in track:
 							# An invalid path.
 							path_components.append(UNKNOWN_PATH_PLACEHOLDER)
 							break
 						else:
-							track.add(parent_reference_number)
+							track.add(parent_segment_number)
 
 						try:
-							current_file_record = self.get_file_record_by_number(parent_reference_number, parent_sequence_number, False)
+							current_file_record = self.get_file_record_by_number(parent_segment_number, parent_sequence_number, False)
 						except MasterFileTableException:
 							# An invalid parent file record.
 							path_components.append(UNKNOWN_PATH_PLACEHOLDER)
 							break
 
-						if parent_reference_number == FILE_NUMBER_ROOT:
+						if parent_segment_number == FILE_NUMBER_ROOT:
 							path_components.append('') # Add a root directory.
 							break
 
@@ -1222,6 +1246,17 @@ class FileSystemParser(object):
 		first_frs_buf = self.volume_object.read(frs_size)
 		first_frs = FileRecordSegment(first_frs_buf)
 
+		# Check if an attribute list is present.
+		attr_list = None
+		for attr in first_frs.attributes():
+			if attr.type_code == Attributes.ATTR_TYPE_ATTRIBUTE_LIST:
+				if type(attr) is AttributeRecordNonresident: # The $MFT file is extremely fragmented.
+					attr_list = attr.value_decoded(self.volume_object, self.cluster_size, self.volume_offset)
+				else:
+					attr_list = attr.value_decoded()
+
+				break
+
 		# Get data runs for the $MFT file.
 		first_fr = FileRecord(first_frs, [])
 
@@ -1237,6 +1272,39 @@ class FileSystemParser(object):
 			raise MasterFileTableException('Unknown file size of the $MFT file')
 
 		self.mft_size = data_size
+
+		# Get the remaining data runs.
+		if attr_list is not None:
+			# The first set of data runs (from the first file record segment, we just read it) covers the second $DATA attribute specified in the attribute list.
+			# These two sets of data runs cover the third $DATA attribute specified in the attribute list. And so on.
+			# Thus, we need a step-by-step approach here. Also, we do relaxed checks.
+
+			attr_list_entries = []
+			for attr_list_entry in attr_list.entries():
+				if attr_list_entry.attribute_type_code != Attributes.ATTR_TYPE_DATA or attr_list_entry.attribute_name is not None:
+					continue
+
+				attr_list_entries.append(attr_list_entry)
+
+			attr_list_entries.sort(key = lambda x: x.lowest_vcn)
+
+			if len(attr_list_entries) == 0:
+				raise MasterFileTableException('Invalid attribute list for the $MFT file (no $DATA attributes listed)')
+
+			if DecodeFileRecordSegmentReference(attr_list_entries[0].segment_reference)[0] != 0:
+				raise MasterFileTableException('Invalid attribute list for the $MFT file (the first $DATA attribute is invalid)')
+
+			child_frs_list = []
+			for attr_list_entry in attr_list_entries[1 : ]: # Skip the first $DATA attribute (which is the first file record segment in the $MFT file).
+				curr_segment_number, curr_sequence_number = DecodeFileRecordSegmentReference(attr_list_entry.segment_reference)
+
+				curr_mft = MasterFileTableParser(self, False)
+				curr_frs = curr_mft.get_file_record_segment_by_number(curr_segment_number)
+
+				child_frs_list.append(curr_frs)
+				first_fr = FileRecord(first_frs, child_frs_list)
+
+				self.mft_data_runs = first_fr.get_data_runs() # Extend the existing data runs.
 
 		# Set the current offset in the $MFT file.
 		self.current_offset_in_mft = 0
