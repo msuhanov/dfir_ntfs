@@ -463,7 +463,7 @@ class AttributeRecordResident(object):
 	"""A name of this attribute record."""
 
 	value = None
-	"""A value (raw data) of this attribute record."""
+	"""A value (raw bytes) of this attribute record."""
 
 	def __init__(self, type_code, name, value):
 		self.type_code = type_code
@@ -505,6 +505,9 @@ class AttributeRecordNonresident(object):
 	mapping_pairs = None
 	"""Mapping pairs (not validated) of this attribute record."""
 
+	data_runs = None
+	"""Decoded mapping pairs of this attribute record."""
+
 	lowest_vcn = None
 	"""A lowest VCN (virtual cluster number) covered by this attribute record."""
 
@@ -514,26 +517,29 @@ class AttributeRecordNonresident(object):
 	file_size = None
 	"""A file (data) size."""
 
-	def __init__(self, type_code, name, mapping_pairs, lowest_vcn, highest_vcn, file_size):
+	def __init__(self, type_code, name, mapping_pairs, lowest_vcn, highest_vcn, file_size, is_merged_attribute_record = False):
 		self.type_code = type_code
 		self.name = name
-		self.mapping_pairs = mapping_pairs
 		self.lowest_vcn = lowest_vcn
 		self.highest_vcn = highest_vcn
 		self.file_size = file_size
+
+		if not is_merged_attribute_record: # Decode data runs if this attribute record is not merged.
+			self.mapping_pairs = mapping_pairs
+			self.data_runs = DecodeMappingPairs(self.mapping_pairs)
 
 	def type_str(self):
 		"""Resolve a type code to a string and return it."""
 
 		return ResolveAttributeType(self.type_code)
 
-	def value_decoded(self, volume_object, cluster_size, volume_offset = 0):
+	def value_decoded(self, volume_object, volume_offset, cluster_size):
 		"""Return a decoded value (as an object from the Attributes module). A file object for a volume, a cluster size (in bytes), and a volume offset (in bytes) should be given."""
 
 		if self.type_code == Attributes.ATTR_TYPE_ATTRIBUTE_LIST:
 			value = b''
 
-			for curr_offset, curr_length in DecodeMappingPairs(self.mapping_pairs):
+			for curr_offset, curr_length in self.data_runs:
 				if curr_offset is None:
 					raise MasterFileTableException('Unexpected sparse data range')
 
@@ -546,15 +552,13 @@ class AttributeRecordNonresident(object):
 				value += data
 
 			value = value[ : self.file_size]
+			return Attributes.AttributeList(value)
 
-			if self.type_code in Attributes.AttributeTypes.keys():
-				# A known attribute.
-				return Attributes.AttributeTypes[self.type_code][1](value)
+		if self.type_code == Attributes.ATTR_TYPE_INDEX_ALLOCATION:
+			fragmented_file = FragmentedFile(volume_object, volume_offset, cluster_size, self.data_runs, self.file_size)
+			return Attributes.IndexAllocation(fragmented_file)
 
-			# An unknown attribute.
-			return Attributes.GenericAttribute(value)
-
-		raise NotImplementedError('Nonresident attribute records are not fully supported')
+		raise NotImplementedError('Nonresident attribute records are not fully supported by this method')
 
 	def __str__(self):
 		if self.name is None:
@@ -568,7 +572,7 @@ class SlackSpace(object):
 	"""This class is used to work with slack space."""
 
 	value = None
-	"""A value (raw data) for this slack space."""
+	"""A value (raw bytes or a list of raw bytes) for this slack space."""
 
 	def __init__(self, value):
 		self.value = value
@@ -593,50 +597,58 @@ class SlackSpace(object):
 
 			return True
 
+		def carve_internal(value):
+			if len(value) >= 8:
+				pos = 0
+				if len(value) % 2 != 0:
+					pos = 1
 
-		if len(self.value) >= 8:
-			pos = 0
-			if len(self.value) % 2 != 0:
-				pos = 1
-
-			while pos < len(self.value):
-				buf = self.value[pos : pos + 32]
-				if len(buf) != 32:
-					break
-
-				ts_tuple = struct.unpack('<QQQQ', buf)
-
-				ts_valid = True
-				for ts in ts_tuple:
-					if not validate_timestamp(ts):
-						ts_valid = False
+				while pos < len(value):
+					buf = value[pos : pos + 32]
+					if len(buf) != 32:
 						break
 
-				if ts_valid and pos >= 8:
-					attr_pos = pos - 8
-					attr_buf = self.value[attr_pos : ]
+					ts_tuple = struct.unpack('<QQQQ', buf)
 
-					try:
-						file_name = Attributes.FileName(attr_buf)
-						ts_m = file_name.get_mtime()
-						ts_a = file_name.get_atime()
-						ts_c = file_name.get_ctime()
-						ts_e = file_name.get_etime()
-						file_name_str = file_name.get_file_name()
-					except Exception:
-						pass
-					else:
-						if validate_file_name(file_name_str):
-							yield file_name
+					ts_valid = True
+					for ts in ts_tuple:
+						if not validate_timestamp(ts):
+							ts_valid = False
+							break
 
-							# Jump to the file name part and continue.
-							pos += 68
-							continue
+					if ts_valid and pos >= 8:
+						attr_pos = pos - 8
+						attr_buf = value[attr_pos : ]
 
-				pos += 2
+						try:
+							file_name = Attributes.FileName(attr_buf)
+							ts_m = file_name.get_mtime()
+							ts_a = file_name.get_atime()
+							ts_c = file_name.get_ctime()
+							ts_e = file_name.get_etime()
+							file_name_str = file_name.get_file_name()
+						except Exception:
+							pass
+						else:
+							if validate_file_name(file_name_str):
+								yield file_name
+
+								# Jump to the file name part and continue.
+								pos += 68
+								continue
+
+					pos += 2
+
+		if type(self.value) is list:
+			for curr_value in self.value:
+				for r in carve_internal(curr_value):
+					yield r
+		else:
+			for r in carve_internal(self.value):
+				yield r
 
 	def __str__(self):
-		return 'SlackSpace, size: {}'.format(len(self.value))
+		return 'SlackSpace, size (bytes or list items): {}'.format(len(self.value))
 
 class FileRecord(object):
 	"""This class is used to represent a file record (one or more file record segments)."""
@@ -657,20 +669,65 @@ class FileRecord(object):
 			if slack is not None:
 				yield slack
 
-	def attributes(self):
-		"""This method yields each attribute (AttributeRecordResident or AttributeRecordNonresident) of this file record."""
+	def attributes(self, merge_attributes = False):
+		"""This method yields each attribute (AttributeRecordResident or AttributeRecordNonresident) of this file record.
+		If the 'merge_attributes' argument is True, split nonresident attributes are merged into a single AttributeRecordNonresident object.
+		"""
 
-		for attr in self.base_frs.attributes():
-			yield attr
-
-		for child_frs in self.child_frs_list:
-			for attr in child_frs.attributes():
+		if not merge_attributes:
+			for attr in self.base_frs.attributes():
 				yield attr
 
-	def get_data_runs(self, data_attribute_name = None):
+			for child_frs in self.child_frs_list:
+				for attr in child_frs.attributes():
+					yield attr
+		else:
+			nonresident_attr_list = []
+
+			for attr in self.attributes(False):
+				if type(attr) is AttributeRecordResident:
+					yield attr
+				else:
+					nonresident_attr_list.append(attr)
+
+			nonresident_attr_list_zero_vcn = []
+			nonresident_attr_list_nonzero_vcn = []
+
+			for attr in nonresident_attr_list:
+				if attr.lowest_vcn == 0:
+					nonresident_attr_list_zero_vcn.append(attr)
+				else:
+					nonresident_attr_list_nonzero_vcn.append(attr)
+
+			for attr_base in nonresident_attr_list_zero_vcn:
+				base_attr_type_code = attr_base.type_code
+				base_attr_name = attr_base.name
+				base_attr_file_size = attr_base.file_size
+
+				attr_extensions = []
+				for attr_extension in nonresident_attr_list_nonzero_vcn:
+					if attr_extension.type_code == base_attr_type_code and attr_extension.name == base_attr_name:
+						attr_extensions.append(attr_extension)
+
+				attr_extensions.sort(key = lambda x: x.lowest_vcn)
+
+				if len(attr_extensions) == 0: # No need to merge.
+					yield attr_base
+				else:
+					merged_highest_vcn = attr_extensions[-1].highest_vcn
+					merged_data_runs = DecodeMappingPairs(attr_base.mapping_pairs)
+					for attr_extension in attr_extensions:
+						merged_data_runs.extend(DecodeMappingPairs(attr_extension.mapping_pairs))
+
+					attr_merged = AttributeRecordNonresident(base_attr_type_code, base_attr_name, None, 0, merged_highest_vcn, base_attr_file_size, True)
+					attr_merged.data_runs = merged_data_runs
+					yield attr_merged
+
+	def get_data_runs(self, data_attribute_name = None, use_index_allocation = False):
 		"""Get and return data runs for a given nonresident $DATA attribute (when set to None or when an empty string is given, use an unnamed $DATA attribute).
 		Data runs are a list of (offset in clusters, size in clusters) tuples. The offset item is set to None for sparse ranges.
 		If there is no nonresident $DATA attribute with a given name, None is returned.
+		If the 'use_index_allocation' argument is True, find data runs for a given $INDEX_ALLOCATION attribute instead.
 		"""
 
 		if data_attribute_name == '':
@@ -681,7 +738,10 @@ class FileRecord(object):
 			if type(attr) is not AttributeRecordNonresident:
 				continue
 
-			if attr.type_code != Attributes.ATTR_TYPE_DATA:
+			if (not use_index_allocation) and attr.type_code != Attributes.ATTR_TYPE_DATA:
+				continue
+
+			if use_index_allocation and attr.type_code != Attributes.ATTR_TYPE_INDEX_ALLOCATION:
 				continue
 
 			if (data_attribute_name is None and attr.name is None) or (data_attribute_name == attr.name):
@@ -715,9 +775,10 @@ class FileRecord(object):
 
 		return data_runs
 
-	def get_data_size(self, data_attribute_name = None):
+	def get_data_size(self, data_attribute_name = None, use_index_allocation = False):
 		"""Get and return the file (data) size for a given nonresident $DATA attribute (when set to None or when an empty string is given, use an unnamed $DATA attribute).
 		If there is no nonresident $DATA attribute with a given name, None is returned.
+		If the 'use_index_allocation' argument is True, use an $INDEX_ALLOCATION attribute instead.
 		"""
 
 		if data_attribute_name == '':
@@ -727,7 +788,10 @@ class FileRecord(object):
 			if type(attr) is not AttributeRecordNonresident:
 				continue
 
-			if attr.type_code != Attributes.ATTR_TYPE_DATA:
+			if (not use_index_allocation) and attr.type_code != Attributes.ATTR_TYPE_DATA:
+				continue
+
+			if use_index_allocation and attr.type_code != Attributes.ATTR_TYPE_INDEX_ALLOCATION:
 				continue
 
 			if (data_attribute_name is None and attr.name is None) or (data_attribute_name == attr.name):
@@ -780,12 +844,16 @@ class MasterFileTableParser(object):
 	statistics = None
 	"""A tuple: (total number of file record segments, number of child in-use file record segments)"""
 
+	first_pass_done = None
+	"""A flag to show if we executed the first pass."""
+
 	def __init__(self, file_object, do_first_pass = True):
 		"""Create a MasterFileTableParser object from a file object (the 'file_object' argument). Complete the first pass, if requested (the 'do_first_pass' argument)."""
 
 		self.file_object = file_object
 		self.child_cache = dict()
 		self.statistics = (None, None)
+		self.first_pass_done = False
 
 		self.file_object.seek(0)
 		signature = self.file_object.read(4)
@@ -814,13 +882,23 @@ class MasterFileTableParser(object):
 		"""Check NTFS version numbers to see if they are supported."""
 
 		frs_volume = self.get_file_record_segment_by_number(FILE_NUMBER_VOLUME)
+
+		found_volume_info = False
 		for attr in frs_volume.attributes():
+			if type(attr) is AttributeRecordNonresident:
+				continue
+
 			attr_decoded = attr.value_decoded()
 			if type(attr_decoded) is Attributes.VolumeInformation:
+				found_volume_info = True
+
 				major_version = attr_decoded.get_major_version()
 				minor_version = attr_decoded.get_minor_version()
 
 				break
+
+		if not found_volume_info:
+			raise MasterFileTableException('Volume information not found')
 
 		if major_version != 3:
 			raise MasterFileTableException('NTFS major version number not supported: {}'.format(major_version))
@@ -1000,7 +1078,7 @@ class MasterFileTableParser(object):
 
 	def build_full_paths(self, file_record, include_attributes = False):
 		"""Build and return a list of full paths (as strings) for a given file record (FileRecord).
-		If 'include_attributes' is True, a list of (full path, $FILE_NAME attribute value) tuples is returned.
+		If the 'include_attributes' argument is True, a list of (full path, $FILE_NAME attribute value) tuples is returned.
 		Note: the root directory is returned as is ("/.").
 		"""
 
@@ -1150,6 +1228,7 @@ class MasterFileTableParser(object):
 			pos += self.file_record_segment_size
 
 		self.statistics = (frs_cnt, child_frs_cnt)
+		self.first_pass_done = True
 
 	def file_records(self, in_use_file_records_only = False):
 		"""This method yields file records (FileRecord). If the 'in_use_file_records_only' argument is True, limit the output to in-use file records only."""
@@ -1201,8 +1280,8 @@ class MasterFileTableParser(object):
 	def __str__(self):
 		return 'MasterFileTableParser'
 
-class FileSystemParser(object):
-	"""This class is used to read and parse a file system (volume). This class can be used as a file-like object for an $MFT file in a volume."""
+class FragmentedFile(object):
+	"""This class is used to provide a file-like object for a file defined by its data runs on a volume."""
 
 	volume_object = None
 	"""A file object for a volume."""
@@ -1210,26 +1289,125 @@ class FileSystemParser(object):
 	volume_offset = None
 	"""An offset of a volume (in bytes)."""
 
+	cluster_size = None
+	"""A cluster size (in bytes)."""
+
+	current_offset_in_file = None
+	"""A current offset in a file."""
+
+	file_size = None
+	"""A size of a file."""
+
+	data_runs = None
+	"""Data runs for a file."""
+
+	def __init__(self, volume_object, volume_offset, cluster_size, data_runs, file_size):
+		"""Create a FragmentedFile object from a file object for a volume (related metadata should be given too).
+		The volume offset, the cluster size, the file size are in bytes."""
+
+		self.volume_object = volume_object
+		self.volume_offset = volume_offset
+		self.cluster_size = cluster_size
+		self.data_runs = data_runs
+		self.file_size = file_size
+
+		self.current_offset_in_file = 0
+
+	def seek(self, offset, whence = 0):
+		"""The seek() method for a file in a volume."""
+
+		old_offset_in_file = self.current_offset_in_file
+
+		if whence == 0:
+			self.current_offset_in_file = offset
+		elif whence == 1:
+			self.current_offset_in_file += offset
+		elif whence == 2:
+			self.current_offset_in_file = self.file_size + offset
+		else:
+			raise ValueError('Invalid whence')
+
+		if self.current_offset_in_file < 0:
+			self.current_offset_in_file = old_offset_in_file # Restore the old offset.
+			raise ValueError('Negative seek value')
+
+		return self.current_offset_in_file
+
+	def tell(self):
+		"""The tell() method for a file in a volume."""
+
+		return self.current_offset_in_file
+
+	def read_virtual_cluster(self, virtual_cluster_number):
+		"""Read and return a virtual cluster of a file by its number."""
+
+		clusters_skipped = 0
+		for offset, size in self.data_runs:
+			if clusters_skipped + size <= virtual_cluster_number: # Move forward.
+				clusters_skipped += size
+				continue
+
+			if clusters_skipped + size > virtual_cluster_number: # This is a run we need.
+				if offset is None: # This is a sparse cluster.
+					return b'\x00' * self.cluster_size
+
+				offset += virtual_cluster_number - clusters_skipped
+
+				self.volume_object.seek(self.volume_offset + offset * self.cluster_size)
+				data = self.volume_object.read(self.cluster_size)
+
+				if len(data) == 0:
+					raise MasterFileTableException('No data read from a volume')
+
+				if len(data) != self.cluster_size:
+					raise MasterFileTableException('Truncated data read from a volume')
+
+				return data
+
+		raise MasterFileTableException('Virtual cluster not found: {}'.format(virtual_cluster_number))
+
+	def read(self, size = None):
+		"""The read() method for a file in a volume."""
+
+		if size is None or size < 0:
+			size = self.file_size - self.current_offset_in_file
+
+		if size <= 0 or self.current_offset_in_file >= self.file_size: # Nothing to read.
+			return b''
+
+		virtual_cluster_number = self.current_offset_in_file // self.cluster_size
+		offset_in_virtual_cluster = self.current_offset_in_file % self.cluster_size
+
+		data = self.read_virtual_cluster(virtual_cluster_number)[offset_in_virtual_cluster : offset_in_virtual_cluster + size]
+		self.current_offset_in_file += len(data)
+
+		bytes_left = size - len(data)
+		if bytes_left > 0: # Recursively read remaining data.
+			data += self.read(bytes_left)
+
+		return data
+
+	def close(self):
+		"""The close() method for a file in a volume. This method does nothing."""
+
+		pass
+
+	def __str__(self):
+		return 'FragmentedFile'
+
+class FileSystemParser(FragmentedFile):
+	"""This class is used to read and parse a file system (volume). This class can be used as a file-like object for an $MFT file in a volume."""
+
 	boot = None
 	"""An object for a boot sector of a volume (BootSector)."""
 
 	cluster_size = None
 	"""A cluster size (in bytes)."""
 
-	current_offset_in_mft = None
-	"""A current offset in an $MFT file."""
-
-	mft_size = None
-	"""A size of an $MFT file."""
-
-	mft_data_runs = None
-	"""Data runs for an $MFT file."""
-
 	def __init__(self, volume_object, volume_offset = 0):
 		"""Create a FileSystemParser object from a file object for a volume. The 'volume_offset' argument can be used to specify the volume offset (in bytes)."""
 
-		self.volume_object = volume_object
-		self.volume_offset = volume_offset
+		super(FileSystemParser, self).__init__(volume_object, volume_offset, None, None, None)
 
 		# Read and parse the boot sector.
 		self.volume_object.seek(self.volume_offset)
@@ -1251,7 +1429,7 @@ class FileSystemParser(object):
 		for attr in first_frs.attributes():
 			if attr.type_code == Attributes.ATTR_TYPE_ATTRIBUTE_LIST:
 				if type(attr) is AttributeRecordNonresident: # The $MFT file is extremely fragmented.
-					attr_list = attr.value_decoded(self.volume_object, self.cluster_size, self.volume_offset)
+					attr_list = attr.value_decoded(self.volume_object, self.volume_offset, self.cluster_size)
 				else:
 					attr_list = attr.value_decoded()
 
@@ -1264,14 +1442,14 @@ class FileSystemParser(object):
 		if data_runs is None:
 			raise MasterFileTableException('No mapping pairs found for the $MFT file')
 
-		self.mft_data_runs = data_runs
+		self.data_runs = data_runs
 
 		# Get the file size of the $MFT file.
 		data_size = first_fr.get_data_size()
 		if data_size is None:
 			raise MasterFileTableException('Unknown file size of the $MFT file')
 
-		self.mft_size = data_size
+		self.file_size = data_size
 
 		# Get the remaining data runs.
 		if attr_list is not None:
@@ -1304,89 +1482,10 @@ class FileSystemParser(object):
 				child_frs_list.append(curr_frs)
 				first_fr = FileRecord(first_frs, child_frs_list)
 
-				self.mft_data_runs = first_fr.get_data_runs() # Extend the existing data runs.
+				self.data_runs = first_fr.get_data_runs() # Extend the existing data runs.
 
-		# Set the current offset in the $MFT file.
-		self.current_offset_in_mft = 0
-
-	def seek(self, offset, from_what = 0):
-		"""The seek() method for an $MFT file in a volume."""
-
-		old_offset_in_mft = self.current_offset_in_mft
-
-		if from_what == 0:
-			self.current_offset_in_mft = offset
-		elif from_what == 1:
-			self.current_offset_in_mft += offset
-		elif from_what == 2:
-			self.current_offset_in_mft = self.mft_size + offset
-		else:
-			raise ValueError('Invalid whence')
-
-		if self.current_offset_in_mft < 0:
-			self.current_offset_in_mft = old_offset_in_mft # Restore the old offset.
-			raise ValueError('Negative seek value')
-
-		return self.current_offset_in_mft
-
-	def tell(self):
-		"""The tell() method for an $MFT file in a volume."""
-
-		return self.current_offset_in_mft
-
-	def read_virtual_cluster(self, virtual_cluster_number):
-		"""Read and return a virtual cluster of an $MFT file by its number."""
-
-		clusters_skipped = 0
-		for offset, size in self.mft_data_runs:
-			if clusters_skipped + size <= virtual_cluster_number: # Move forward.
-				clusters_skipped += size
-				continue
-
-			if clusters_skipped + size > virtual_cluster_number: # This is a run we need.
-				if offset is None: # This is a sparse cluster.
-					return b'\x00' * self.cluster_size
-
-				offset += virtual_cluster_number - clusters_skipped
-
-				self.volume_object.seek(self.volume_offset + offset * self.cluster_size)
-				data = self.volume_object.read(self.cluster_size)
-
-				if len(data) == 0:
-					raise MasterFileTableException('No data read from a volume')
-
-				if len(data) != self.cluster_size:
-					raise MasterFileTableException('Truncated data read from a volume')
-
-				return data
-
-		raise MasterFileTableException('Virtual cluster not found: {}'.format(virtual_cluster_number))
-
-	def read(self, size = None):
-		"""The read() method for an $MFT file in a volume."""
-
-		if size is None or size < 0:
-			size = self.mft_size - self.current_offset_in_mft
-
-		if size <= 0 or self.current_offset_in_mft >= self.mft_size: # Nothing to read.
-			return b''
-
-		virtual_cluster_number = self.current_offset_in_mft // self.cluster_size
-		offset_in_virtual_cluster = self.current_offset_in_mft % self.cluster_size
-
-		data = self.read_virtual_cluster(virtual_cluster_number)[offset_in_virtual_cluster : offset_in_virtual_cluster + size]
-		self.current_offset_in_mft += len(data)
-
-		bytes_left = size - len(data)
-		if bytes_left > 0:
-			data += self.read(bytes_left)
-
-		return data
-
-	def close(self):
-		"""The close() method for an $MFT file in a volume. This method does nothing."""
-
-		pass
+		# Reset the current offset.
+		self.seek(0)
 
 	def __str__(self):
 		return 'FileSystemParser'

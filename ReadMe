@@ -4,19 +4,25 @@ dfir_ntfs: an NTFS parser for digital forensics & incident response
 1. Project goals
 
 - Parse $MFT, $UsnJrnl:$J, $LogFile files, extract as much data as possible.
+- Parse volumes and volume images.
 
 2. Installation
 
-# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0-beta12.tar.gz
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0-beta13.tar.gz
 
 3. License
 
 This project is made available under the terms of the GNU GPL, version 3.
 See the 'License' file.
 
-The only exception is the "nist-hacking-case.mft" file.
+The first exception is the "nist-hacking-case.mft" file.
 This file is from the NIST Hacking Case, which is distributed by NIST. See
 the 'Use of NIST Information' section here: <https://www.nist.gov/disclaimer>.
+
+The second exception is boot code embedded in some test data.
+This code is not covered by the GNU GPL, version 3.
+
+(All exceptions are in the "test_data" directory, which is not installed.)
 
 ---
 (c) Maxim Suhanov

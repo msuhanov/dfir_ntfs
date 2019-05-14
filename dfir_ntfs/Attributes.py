@@ -110,6 +110,10 @@ INDEX_ENTRY_END = 0x02 # Is an end record.
 # Flags for the extended attributes:
 FILE_NEED_EA = 0x00000080 # An application should read the extended attribute to interpret a file.
 
+# Some values for index buffers:
+MULTI_SECTOR_HEADER_SIGNATURE_INDEX = b'INDX'
+UPDATE_SEQUENCE_STRIDE_INDEX = 512
+
 def ResolveFileAttributes(FileAttributes):
 	"""Convert file attributes to a string. Only known file attributes are converted."""
 
@@ -130,14 +134,70 @@ def DecodeGUIDTime(Timestamp):
 
 	return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds = Timestamp / 10)
 
+def VerifyAndUnprotectIndexSectors(Buffer):
+	"""Apply an update sequence array (USA) to multiple sectors (as a bytearray object), verify and return the resulting buffer. Only an index buffer can be used as input data.
+	If something is wrong with input data, return None.
+	"""
+
+	if len(Buffer) < 2 * UPDATE_SEQUENCE_STRIDE_INDEX or len(Buffer) % UPDATE_SEQUENCE_STRIDE_INDEX != 0:
+		return
+
+	usa_offset, usa_size = struct.unpack('<HH', Buffer[4 : 8])
+
+	if usa_offset < 40 or usa_offset > UPDATE_SEQUENCE_STRIDE_INDEX - 6:
+		return
+
+	if usa_size < 2 or (usa_size - 1) * UPDATE_SEQUENCE_STRIDE_INDEX != len(Buffer):
+		return
+
+	if usa_offset + usa_size * 2 >= len(Buffer):
+		return
+
+	sequence_number_in_usa_bytes = Buffer[usa_offset : usa_offset + 2]
+
+	i = 1 # Skip the first element (sequence_number_in_usa_bytes).
+	while i < usa_size:
+		offset_in_usa = i * 2
+		update_bytes = Buffer[usa_offset + offset_in_usa : usa_offset + offset_in_usa + 2]
+
+		offset_in_buf = i * UPDATE_SEQUENCE_STRIDE_INDEX - 2
+		sequence_number_in_sector_bytes = Buffer[offset_in_buf : offset_in_buf + 2]
+
+		if sequence_number_in_usa_bytes != sequence_number_in_sector_bytes:
+			return
+
+		Buffer[offset_in_buf] = update_bytes[0]
+		Buffer[offset_in_buf + 1] = update_bytes[1]
+
+		i += 1
+
+	end_of_usa_offset = usa_offset + usa_size * 2
+
+	signature = Buffer[ : 4]
+	if signature != MULTI_SECTOR_HEADER_SIGNATURE_INDEX:
+		return
+
+	return Buffer
+
 class GenericAttribute(object):
-	"""This class is used to describe a generic attribute."""
+	"""This class is used to describe a generic attribute (either resident or nonresident)."""
 
 	value = None
-	"""This attribute as raw data."""
+	"""This attribute as raw bytes."""
 
 	def __init__(self, value):
 		self.value = value
+
+class GenericAttributeNonresident(object):
+	"""This class is used to describe a generic nonresident attribute.
+	This class should be used for a large nonresident attribute.
+	"""
+
+	fragmented_file = None
+	"""Data of this attribute as a file-like object."""
+
+	def __init__(self, fragmented_file):
+		self.fragmented_file = fragmented_file
 
 class StandardInformation(GenericAttribute):
 	"""$STANDARD_INFORMATION."""
@@ -488,7 +548,7 @@ class VolumeName(GenericAttribute):
 	"""$VOLUME_NAME."""
 
 	def get_name(self):
-		"""Get and return a decoded volume name."""
+		"""Get and return the decoded volume name."""
 
 		return self.value.decode('utf-16le', errors = 'replace')
 
@@ -579,8 +639,9 @@ class IndexEntry(object):
 	def get_attribute(self):
 		"""Get and return the attribute (as raw bytes)."""
 
-		if self.get_flags() & INDEX_ENTRY_END == 0:
-			attribute_raw = self.index_entry_raw[16 : 16 + self.get_attribute_length()]
+		attribute_length = self.get_attribute_length()
+		if self.get_flags() & INDEX_ENTRY_END == 0 and attribute_length > 0:
+			attribute_raw = self.index_entry_raw[16 : 16 + attribute_length]
 			return attribute_raw
 
 	def get_vcn(self):
@@ -625,13 +686,13 @@ class IndexRoot(GenericAttribute):
 
 		index_header = self.get_index_header()
 		index_entry_pos = 16 + index_header.get_first_index_entry()
-		while index_entry_pos < index_header.get_first_free_byte() and index_entry_pos < len(self.value):
+		while index_entry_pos < 16 + index_header.get_first_free_byte() and index_entry_pos < len(self.value):
 			index_entry_raw = self.value[index_entry_pos : ]
 			index_entry = IndexEntry(index_entry_raw)
 
 			index_entry_length = index_entry.get_length()
 
-			if index_entry_length < 16 or index_entry.get_attribute_length() == 0: # This index entry is invalid
+			if index_entry_length < 16 or index_entry.get_attribute_length() == 0: # This index entry is invalid.
 				break
 
 			yield index_entry
@@ -687,13 +748,130 @@ class IndexRoot(GenericAttribute):
 				print('')
 				print('Subnode VCN list: {}'.format(' '.join(vcn_list)))
 
-class IndexAllocation(GenericAttribute):
+class IndexBuffer(object):
+	"""This class is used to describe the index buffer (in the directory index)."""
+
+	def __init__(self, index_buffer_raw):
+		self.index_buffer_raw = index_buffer_raw
+
+	def get_logfile_sequence_number(self):
+		"""Get and return the log file sequence number (LSN)."""
+
+		return struct.unpack('<Q', self.index_buffer_raw[8 : 16])[0]
+
+	def get_this_block(self):
+		"""Get and return the block number for this index."""
+
+		return struct.unpack('<Q', self.index_buffer_raw[16 : 24])[0]
+
+	def get_index_header(self):
+		"""Get and return the index header (IndexHeader)."""
+
+		index_header_raw = self.index_buffer_raw[24 : 40]
+		return IndexHeader(index_header_raw)
+
+	def index_entries(self):
+		"""This method yields each index entry (IndexEntry)."""
+
+		index_header = self.get_index_header()
+		index_entry_pos = 24 + index_header.get_first_index_entry()
+		while index_entry_pos < 24 + index_header.get_first_free_byte() and index_entry_pos < len(self.index_buffer_raw):
+			index_entry_raw = self.index_buffer_raw[index_entry_pos : ]
+			index_entry = IndexEntry(index_entry_raw)
+
+			index_entry_length = index_entry.get_length()
+
+			if index_entry_length < 16 or index_entry.get_attribute_length() == 0: # This index entry is invalid.
+				break
+
+			yield index_entry
+
+			if index_entry.get_flags() & INDEX_ENTRY_END > 0:
+				break
+
+			if index_entry_length % 8 != 0:
+				index_entry_length_aligned = index_entry_length + 8 - index_entry_length % 8
+			else:
+				index_entry_length_aligned = index_entry_length
+
+			index_entry_pos += index_entry_length_aligned
+
+	def get_slack(self):
+		"""Get and return the slack space (as raw bytes)."""
+
+		index_header = self.get_index_header()
+		return self.index_buffer_raw[24 + index_header.get_first_free_byte() : ]
+
+class IndexAllocation(GenericAttributeNonresident):
 	"""$INDEX_ALLOCATION."""
+
+	index_buffer_size = None
+	"""A size of each index buffer."""
+
+	def __init__(self, fragmented_file):
+		super(IndexAllocation, self).__init__(fragmented_file)
+
+		# Try to determine the index buffer size for this attribute.
+		self.fragmented_file.seek(4)
+		usa_offset_and_size_raw = self.fragmented_file.read(4)
+
+		if len(usa_offset_and_size_raw) == 4:
+			usa_offset, usa_size = struct.unpack('<HH', usa_offset_and_size_raw)
+			if usa_size - 1 >= 2:
+				index_buffer_size = (usa_size - 1) * UPDATE_SEQUENCE_STRIDE_INDEX
+
+				self.fragmented_file.seek(0)
+				index_buf = bytearray(self.fragmented_file.read(index_buffer_size))
+
+				if len(index_buf) != index_buffer_size or VerifyAndUnprotectIndexSectors(index_buf) is None:
+					# Something is wrong with the first index buffer.
+					self.index_buffer_size = None
+				else:
+					self.index_buffer_size = index_buffer_size
+
+	def index_buffers(self):
+		"""This method yields each index buffer (IndexBuffer)."""
+
+		if self.index_buffer_size is not None:
+			i = 0
+			while True:
+				self.fragmented_file.seek(i * self.index_buffer_size)
+				index_buf_raw = bytearray(self.fragmented_file.read(self.index_buffer_size))
+
+				if len(index_buf_raw) != self.index_buffer_size:
+					break
+
+				index_buf = VerifyAndUnprotectIndexSectors(index_buf_raw)
+				if index_buf is not None:
+					yield IndexBuffer(index_buf)
+
+				i += 1
+
+	def get_slack(self):
+		"""Get and return the slack space (as a list of raw bytes)."""
+
+		slack_space_list = []
+		for index_buf in self.index_buffers():
+			slack_space = index_buf.get_slack()
+
+			if len(slack_space) <= 8: # Ignore small chunks of index slack data.
+				continue
+
+			slack_space_list.append(slack_space)
+
+		return slack_space_list
 
 	def print_information(self):
 		"""Print all information in a human-readable form."""
 
+		if self.index_buffer_size is None:
+			index_buffer_size = 'unknown'
+		else:
+			index_buffer_size = self.index_buffer_size
+
 		print('$INDEX_ALLOCATION')
+		print(' Bytes per index buffer: {}'.format(index_buffer_size))
+		print(' Length: {}'.format(self.fragmented_file.file_size))
 
 class Bitmap(GenericAttribute):
 	"""$BITMAP."""

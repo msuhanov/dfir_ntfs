@@ -1,3 +1,11 @@
+Version: 1.0.0-beta13
+
+Add a class to handle nonresident index buffers.
+Add a mode to parse nonresident index buffers found in a volume file.
+Minor changes.
+
+---
+
 Version: 1.0.0-beta12
 
 Handle an $MFT file with child file record segments.

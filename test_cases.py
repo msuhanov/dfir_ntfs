@@ -9,6 +9,8 @@ import hashlib
 import datetime
 import re
 import io
+import gzip
+import pickle
 from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector
 
 TEST_DATA_DIR = 'test_data'
@@ -76,8 +78,11 @@ BOOT_4Kn = os.path.join(TEST_DATA_DIR, '4kn.boot')
 BOOT_512 = os.path.join(TEST_DATA_DIR, '512.boot')
 BOOT_NOBOOTCODE = os.path.join(TEST_DATA_DIR, 'nobootcode.boot')
 
+NTFS_FILE_4k = os.path.join(TEST_DATA_DIR, 'file_4k.bin')
 NTFS_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_frag_mft.bin')
 NTFS_EXTREMELY_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_extremely_fragmented_mft.raw') # This file is too large to be included into the repository.
+NTFS_EXTREMELY_FRAGMENTED_MFT_INDX_DATA_RUNS = os.path.join(TEST_DATA_DIR, 'data_runs.pickle')
+NTFS_INDEX_GZ = os.path.join(TEST_DATA_DIR, 'ntfs_index.raw.gz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -354,6 +359,18 @@ def test_frs():
 		i += 1
 
 	assert i == 6
+
+def test_first_pass():
+	f = open(MFT_UNICODE, 'rb')
+	mft_1 = MFT.MasterFileTableParser(f)
+	assert mft_1.first_pass_done
+
+	mft_2 = MFT.MasterFileTableParser(f, False)
+	assert not mft_2.first_pass_done
+	mft_2.execute_first_pass()
+	assert mft_2.first_pass_done
+
+	f.close()
 
 def test_mft_unicode_file_names():
 	f = open(MFT_UNICODE, 'rb')
@@ -1733,14 +1750,14 @@ def test_file_system():
 
 	assert fs.boot.get_total_number_of_sectors() == 14335
 
-	assert len(fs.mft_data_runs) == 5
-	assert fs.mft_data_runs[0] == (597, 235)
-	assert fs.mft_data_runs[1] == (1164, 116)
-	assert fs.mft_data_runs[2] == (1304, 136)
-	assert fs.mft_data_runs[3] == (1456, 112)
-	assert fs.mft_data_runs[4] == (1616, 169)
+	assert len(fs.data_runs) == 5
+	assert fs.data_runs[0] == (597, 235)
+	assert fs.data_runs[1] == (1164, 116)
+	assert fs.data_runs[2] == (1304, 136)
+	assert fs.data_runs[3] == (1456, 112)
+	assert fs.data_runs[4] == (1616, 169)
 
-	assert fs.mft_size == 3145728
+	assert fs.file_size == 3145728
 
 	mft_md5 = '3a75da5a96eeab4850b811df1c6b6ec9'
 
@@ -1885,23 +1902,23 @@ def test_file_system():
 
 	assert md5.hexdigest() == mft_md5
 
-	assert fs.seek(-1, 2) == fs.mft_size - 1
-	assert fs.tell() == fs.mft_size - 1
+	assert fs.seek(-1, 2) == fs.file_size - 1
+	assert fs.tell() == fs.file_size - 1
 
-	assert fs.seek(1, 2) == fs.mft_size + 1
-	assert fs.tell() == fs.mft_size + 1
+	assert fs.seek(1, 2) == fs.file_size + 1
+	assert fs.tell() == fs.file_size + 1
 
-	assert fs.seek(0, 2) == fs.mft_size
-	assert fs.tell() == fs.mft_size
+	assert fs.seek(0, 2) == fs.file_size
+	assert fs.tell() == fs.file_size
 
 	assert fs.seek(0) == 0
 	assert fs.tell() == 0
 
 	fs.seek(0)
-	assert len(fs.read(9999999999999999)) == fs.mft_size
+	assert len(fs.read(9999999999999999)) == fs.file_size
 
 	fs.seek(4096 + 33)
-	assert len(fs.read(9999999999999999)) == fs.mft_size - 4096 - 33
+	assert len(fs.read(9999999999999999)) == fs.file_size - 4096 - 33
 
 	mft = MFT.MasterFileTableParser(fs)
 	fr = mft.get_file_record_by_path('/2857')
@@ -1926,6 +1943,15 @@ def test_file_system():
 
 	f.close()
 
+	f = open(NTFS_FILE_4k, 'rb')
+
+	fs = MFT.FileSystemParser(f)
+	mft = MFT.MasterFileTableParser(fs)
+	fr = mft.get_file_record_by_number(34)
+	assert fr.get_data_runs() == [ (755, 1) ]
+
+	f.close()
+
 def test_file_system_extremely_fragmented_mft():
 	try:
 		f = open(NTFS_EXTREMELY_FRAGMENTED_MFT, 'rb')
@@ -1945,7 +1971,170 @@ def test_file_system_extremely_fragmented_mft():
 		if len(buf) != 16384:
 			break
 
-	assert md5.hexdigest() == 'ed9c202405fd9a28b7e0ee96e3f07b33'
 	assert bytes_read == 52166656000
+	assert md5.hexdigest() == 'ed9c202405fd9a28b7e0ee96e3f07b33'
 
 	f.close()
+
+def test_file_system_index_allocation():
+	f = gzip.open(NTFS_INDEX_GZ, 'rb')
+
+	fs = MFT.FileSystemParser(f, 128 * 512)
+	mft = MFT.MasterFileTableParser(fs)
+
+	fr_root = mft.get_file_record_by_path('/')
+	fr_dir = mft.get_file_record_by_path('/test_dir/')
+
+	assert fr_root is not None
+	assert fr_dir is not None
+
+	file_names_dir = [ '111111111111111.txt', '222222222222222.txt', '333333333333333.txt', '444444444444444.txt', '555555555555555.txt', '666666666666666.txt', '777777777777777.txt',
+		'999999999999999.txt', 'AAAAAAAAAAA.txt' ]
+
+	file_names_root = [ '$AttrDef', '$BadClus', '$Bitmap', '$Boot', '$Extend', '$LogFile', '$MFT', '$MFTMirr', '$RECYCLE.BIN', '$Secure', '$UpCase',
+		'$Volume', '.',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (10).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (11).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (12).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (13).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (14).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (15).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (2).txt',
+		'test_dir',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (4).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (5).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (6).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (7).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (8).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (9).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy.txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.txt',
+		'System Volume Information',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (3).txt',
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (16).txt' ]
+
+	file_names_slack_dir = [ 'AAAAAAAAAAA.txt', 'AAAAAAAAAAA.txt', 'BBBBBBBBBBBBB-del.txt' ]
+
+	slack_root = []
+	slack_dir = []
+
+	c = 0
+	for attr in fr_root.attributes():
+		if type(attr) is MFT.AttributeRecordResident:
+			continue
+
+		v = attr.value_decoded(f, 128 * 512, 2048)
+		assert type(v) is Attributes.IndexAllocation
+		assert v.index_buffer_size == 4096
+
+		cc = 0
+		for index_buf in v.index_buffers():
+			assert index_buf.get_logfile_sequence_number() > 0
+			assert index_buf.get_this_block() == cc * v.index_buffer_size // 2048
+
+			for index_entry in index_buf.index_entries():
+				attr_value = Attributes.FileName(index_entry.get_attribute())
+
+				assert attr_value.get_parent_directory() == 1407374883553285
+				file_names_root.remove(attr_value.get_file_name())
+
+			cc += 1
+
+		assert cc == 4
+
+		slack_root.extend(v.get_slack())
+
+		c += 1
+
+	assert c == 1
+	assert len(file_names_root) == 0
+
+	c = 0
+	for attr in fr_dir.attributes():
+		if type(attr) is MFT.AttributeRecordResident:
+			continue
+
+		v = attr.value_decoded(f, 128 * 512, 2048)
+		assert type(v) is Attributes.IndexAllocation
+		assert v.index_buffer_size == 4096
+
+		cc = 0
+		for index_buf in v.index_buffers():
+			assert index_buf.get_logfile_sequence_number() > 0
+			assert index_buf.get_this_block() == 0
+
+			for index_entry in index_buf.index_entries():
+				attr_value = Attributes.FileName(index_entry.get_attribute())
+
+				assert attr_value.get_parent_directory() == 281474976710695
+				file_names_dir.remove(attr_value.get_file_name())
+
+			cc += 1
+
+		assert cc == 1
+
+		slack_dir.extend(v.get_slack())
+
+		c += 1
+
+	assert c == 1
+	assert len(file_names_dir) == 0
+
+	for file_name in MFT.SlackSpace(slack_dir).carve():
+		file_names_slack_dir.remove(file_name.get_file_name())
+
+	assert len(file_names_slack_dir) == 0
+
+	file_names_root_dir = []
+	for file_name in MFT.SlackSpace(slack_root).carve():
+		file_names_root_dir.append(file_name.get_file_name())
+
+	assert len(file_names_root_dir) > 0
+	assert 'test_dir' in file_names_root_dir
+	assert 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA - Copy (11).txt' in file_names_root_dir
+
+	f.close()
+
+def test_merged_index():
+	try:
+		f = open(NTFS_EXTREMELY_FRAGMENTED_MFT, 'rb')
+	except Exception:
+		pytest.skip('No test file found')
+
+	fs = MFT.FileSystemParser(f, 2048 * 512)
+	mft = MFT.MasterFileTableParser(fs, False)
+
+	frs = mft.get_file_record_segment_by_number(39)
+
+	child_frs_list_n = [ 10138606, 10344102, 10549520, 1065768, 10755037, 10960570, 11165969, 11371458, 11576904, 11782374, 11987783, 12193225, 12398725, 12604204, 12809756, 1281989, 13015208, 13220823, 13426241, 13631641, 13837158, 14042644, 14248135, 14453614, 14659193, 14864638, 1498280, 15070092, 15275463, 15480864, 15686424, 15891824, 16097357, 16302709, 16508227, 16713806, 16919359, 17124909, 1714541, 17330391, 17535879, 17741369, 17946905, 18152382, 18357936, 18563559, 18768985, 18974511, 19180110, 1930652, 19385624, 19591132, 19796603, 20002108, 201464, 20207579, 20413068, 20618639, 20824145, 21029627, 21235115, 21440523, 2146862, 21646022, 21851464, 22057018, 22262568, 22468042, 22673647, 22879166, 23084671, 23290170, 23495631, 2362862, 23701121, 23906446, 24112016, 24317612, 24523228, 24728637, 24934073, 25139625, 25345248, 25550736, 25756137, 2579154, 25961574, 26167126, 26242, 26372568, 26578077, 26783629, 26989074, 27194607, 27400105, 27605610, 27810968, 2795325, 28016383, 28221872, 28427450, 28632896, 28838233, 29043881, 29249408, 29454869, 29660303, 29865705, 30071230, 3011556, 30276736, 30482260, 30687688, 30893212, 31098763, 31304236, 31509790, 31715294, 31920766, 32126298, 3227797, 32331751, 32537135, 32742703, 32948185, 33153627, 33359019, 33564410, 33769971, 33975341, 34180921, 34386276, 3444078, 34591819, 34797373, 35002873, 35208264, 35413708, 35619208, 35824795, 36030367, 36235611, 36441082, 3660379, 36646624, 36852196, 37057746, 37263219, 37468673, 37674278, 37879795, 38085453, 38290881, 38496352, 38701741, 3876490, 38907337, 39112901, 39318344, 39523833, 39729304, 39934875, 40140360, 40345914, 40551520, 40757009, 4092681, 40962481, 41168078, 41373612, 41579085, 417565, 41784583, 41990081, 42195577, 42401038, 42606546, 42811985, 43017444, 4308742, 43222968, 43428547, 43634137, 43839464, 44045097, 44250666, 44456129, 44661600, 44867018, 45072524, 4524843, 45277951, 45483530, 45688975, 45894482, 46099989, 46305530, 46511126, 46716518, 46921864, 47127434, 47332958, 4741094, 47538512, 47743857, 47949472, 48155069, 48360548, 48566011, 48771455, 48976955, 49182424, 49387886, 4957295, 49593332, 49798832, 50004352, 50209897, 50415358, 50620832, 50826400, 5173417, 5389557, 5605808, 5821899, 6038070, 6254191, 633666, 6470362, 6686613, 6902934, 7119155, 7335386, 7551607, 7767628, 7983649, 8199910, 8416021, 849617, 8632182, 8848643, 9064944, 9281096, 9497187, 9713297, 9929498 ]
+	child_frs_list = []
+	for i in child_frs_list_n:
+		child_frs = mft.get_file_record_segment_by_number(i)
+		child_frs_list.append(child_frs)
+
+	fr = MFT.FileRecord(frs, child_frs_list)
+
+	c = 0
+	for attr in fr.attributes(True):
+		if type(attr) is not MFT.AttributeRecordNonresident:
+			continue
+
+		if attr.type_code != 0xA0:
+			continue
+
+		assert attr.lowest_vcn == 0 and attr.highest_vcn == 10998527 and attr.file_size == 11262492672 and attr.name == '$I30'
+		c += 1
+
+	assert c == 1
+
+	with open(NTFS_EXTREMELY_FRAGMENTED_MFT_INDX_DATA_RUNS, 'rb') as f:
+		data_runs_expected = pickle.load(f)
+
+	assert attr.data_runs == fr.get_data_runs('$I30', True)
+	assert attr.data_runs == data_runs_expected
+
+	total_length = 0
+	for offset, length in attr.data_runs:
+		total_length += length
+
+	assert total_length * 1024 == 11262492672

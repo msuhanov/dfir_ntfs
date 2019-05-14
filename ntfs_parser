@@ -198,7 +198,11 @@ def process_mft():
 
 			if attr_index_root is not None:
 				for index_entry in attr_index_root.index_entries():
-					attr_file_name = Attributes.FileName(index_entry.get_attribute())
+					attr_file_name_raw = index_entry.get_attribute()
+					if attr_file_name_raw is None:
+						continue
+
+					attr_file_name = Attributes.FileName(attr_file_name_raw)
 
 					if len(file_paths) > 0:
 						dir_path = file_paths[0][0]
@@ -238,7 +242,7 @@ def process_mft():
 				except MFT.MasterFileTableException:
 					parent_file_path = None
 				else:
-					if len(file_paths) > 0:
+					if len(parent_file_paths) > 0:
 						parent_file_path = parent_file_paths[0]
 					else:
 						parent_file_path = None
@@ -673,20 +677,155 @@ def process_log():
 		output_file.write(deleted_files)
 		output_file.write('\n\n---\n\n')
 
+def process_indx():
+	global input_file, input_offset, csv_writer
+
+	fs = MFT.FileSystemParser(input_file, input_offset)
+	mft = MFT.MasterFileTableParser(fs)
+
+	csv_writer.writerow(['Source', 'MFT reference number', 'Is directory', 'Path', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', 'File size'])
+
+	for file_record in mft.file_records():
+
+		# Parse this file record.
+
+		try:
+			file_paths = mft.build_full_paths(file_record, True)
+		except MFT.MasterFileTableException:
+			continue
+
+		parent_mft_number = file_record.get_master_file_table_number()
+		parent_sequence_number = file_record.get_sequence_number()
+
+		# Locate the $I30 attribute and parse it.
+
+		for attribute in file_record.attributes(True):
+			if type(attribute) is MFT.AttributeRecordResident:
+				continue
+
+			if attribute.name == '$I30' and attribute.type_code == Attributes.ATTR_TYPE_INDEX_ALLOCATION:
+				i30 = attribute.value_decoded(input_file, input_offset, fs.cluster_size)
+
+				for index_buffer in i30.index_buffers():
+					for index_entry in index_buffer.index_entries():
+						attr_file_name_raw = index_entry.get_attribute()
+						if attr_file_name_raw is None:
+							continue
+
+						attr_file_name = Attributes.FileName(attr_file_name_raw)
+
+						if attr_file_name.get_parent_directory() != MFT.EncodeFileRecordSegmentReference(parent_mft_number, parent_sequence_number):
+							# This index entry points to a different parent for some reason.
+							try:
+								real_parent_file_record = mft.get_file_record_by_number(parent_mft_number, parent_sequence_number)
+								parent_file_paths = mft.build_full_paths(real_parent_file_record)
+							except MFT.MasterFileTableException:
+								parent_file_path = None
+							else:
+								if len(parent_file_paths) > 0:
+									parent_file_path = parent_file_paths[0]
+								else:
+									parent_file_path = None
+
+							if parent_file_path is not None:
+								if parent_file_path == '/.':
+									parent_file_path = ''
+
+								file_path = MFT.PATH_SEPARATOR.join([parent_file_path, attr_file_name.get_file_name()])
+							else:
+								file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+						else:
+							if len(file_paths) > 0:
+								dir_path = file_paths[0][0]
+								if dir_path == '/.':
+									dir_path = ''
+
+								file_path = MFT.PATH_SEPARATOR.join([dir_path, attr_file_name.get_file_name()])
+							else:
+								file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+
+						fr_number = index_entry.get_file_reference()
+
+						if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
+							fr_directory = 'Y'
+						else:
+							fr_directory = 'N'
+
+						fn_mtime = format_timestamp(attr_file_name.get_mtime())
+						fn_atime = format_timestamp(attr_file_name.get_atime())
+						fn_ctime = format_timestamp(attr_file_name.get_ctime())
+						fn_etime = format_timestamp(attr_file_name.get_etime())
+
+						file_size = attr_file_name.get_file_size()
+
+						csv_writer.writerow(['Index record', fr_number, fr_directory, file_path, fn_mtime, fn_atime, fn_ctime, fn_etime, file_size])
+
+				slack_list = i30.get_slack()
+				slack_parser = MFT.SlackSpace(slack_list)
+				for attr_file_name in slack_parser.carve():
+					if attr_file_name.get_parent_directory() != MFT.EncodeFileRecordSegmentReference(parent_mft_number, parent_sequence_number):
+						# This index entry points to a different parent for some reason.
+						try:
+							real_parent_file_record = mft.get_file_record_by_number(parent_mft_number, parent_sequence_number)
+							parent_file_paths = mft.build_full_paths(real_parent_file_record)
+						except MFT.MasterFileTableException:
+							parent_file_path = None
+						else:
+							if len(parent_file_paths) > 0:
+								parent_file_path = parent_file_paths[0]
+							else:
+								parent_file_path = None
+
+						if parent_file_path is not None:
+							if parent_file_path == '/.':
+								parent_file_path = ''
+
+							file_path = MFT.PATH_SEPARATOR.join([parent_file_path, attr_file_name.get_file_name()])
+						else:
+							file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+					else:
+						if len(file_paths) > 0:
+							dir_path = file_paths[0][0]
+							if dir_path == '/.':
+								dir_path = ''
+
+							file_path = MFT.PATH_SEPARATOR.join([dir_path, attr_file_name.get_file_name()])
+						else:
+							file_path = MFT.PATH_SEPARATOR.join(['<Unknown>', attr_file_name.get_file_name()])
+
+					fr_number = '?'
+
+					if attr_file_name.get_file_attributes() & Attributes.DUP_FILE_NAME_INDEX_PRESENT > 0:
+						fr_directory = 'Y'
+					else:
+						fr_directory = 'N'
+
+					fn_mtime = format_timestamp(attr_file_name.get_mtime())
+					fn_atime = format_timestamp(attr_file_name.get_atime())
+					fn_ctime = format_timestamp(attr_file_name.get_ctime())
+					fn_etime = format_timestamp(attr_file_name.get_etime())
+
+					file_size = attr_file_name.get_file_size()
+
+					csv_writer.writerow(['Index slack', fr_number, fr_directory, file_path, fn_mtime, fn_atime, fn_ctime, fn_etime, file_size])
+
+	fs.close()
+
 def print_usage():
-	print('Extract information from NTFS metadata files')
+	print('Extract information from NTFS metadata files and volumes')
 	print('')
 	print('Usage:')
 	print(' ntfs_parser --mft <input file ($MFT)> <output file (CSV)>')
 	print(' ntfs_parser --usn <input file ($MFT)> <input file ($UsnJrnl:$J)> <output file (CSV)>')
 	print(' ntfs_parser --log <input file ($MFT)> <input file ($LogFile)> <output file (TXT)>')
+	print(' ntfs_parser --indx <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
 
 if len(sys.argv) != 4 and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mft', '--usn', '--log' ]:
+if mode not in [ '--mft', '--usn', '--log', '--indx' ]:
 	print_usage()
 	sys.exit(0)
 
@@ -694,7 +833,7 @@ if mode in [ '--mft' ] and len(sys.argv) != 4:
 	print_usage()
 	sys.exit(0)
 
-if mode in [ '--usn', '--log' ] and len(sys.argv) != 5:
+if mode in [ '--usn', '--log', '--indx' ] and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
@@ -717,6 +856,18 @@ elif mode == '--log':
 	output_file = open(sys.argv[4], 'w', encoding = 'utf-8')
 
 	process_log()
+elif mode == '--indx':
+	input_file = open(sys.argv[2], 'rb')
+	try:
+		input_offset = int(sys.argv[3])
+	except ValueError:
+		print_usage()
+		sys.exit(0)
+
+	output_file = open(sys.argv[4], 'w', newline = '', encoding = 'utf-8')
+	csv_writer = csv.writer(output_file, dialect = 'excel')
+
+	process_indx()
 
 input_file.close()
 output_file.close()
