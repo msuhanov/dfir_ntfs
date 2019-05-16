@@ -820,14 +820,15 @@ class IndexAllocation(GenericAttributeNonresident):
 			if usa_size - 1 >= 2:
 				index_buffer_size = (usa_size - 1) * UPDATE_SEQUENCE_STRIDE_INDEX
 
-				self.fragmented_file.seek(0)
-				index_buf = bytearray(self.fragmented_file.read(index_buffer_size))
+				if index_buffer_size > 0 and index_buffer_size % 512 == 0 and index_buffer_size <= 240640: # (512-40-2)*512=240640.
+					self.fragmented_file.seek(0)
+					index_buf = bytearray(self.fragmented_file.read(index_buffer_size))
 
-				if len(index_buf) != index_buffer_size or VerifyAndUnprotectIndexSectors(index_buf) is None:
-					# Something is wrong with the first index buffer.
-					self.index_buffer_size = None
-				else:
-					self.index_buffer_size = index_buffer_size
+					if len(index_buf) != index_buffer_size or VerifyAndUnprotectIndexSectors(index_buf) is None:
+						# Something is wrong with the first index buffer.
+						self.index_buffer_size = None
+					else:
+						self.index_buffer_size = index_buffer_size
 
 	def index_buffers(self):
 		"""This method yields each index buffer (IndexBuffer)."""

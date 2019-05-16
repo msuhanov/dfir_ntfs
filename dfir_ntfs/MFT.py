@@ -334,6 +334,8 @@ class FileRecordSegment(object):
 		"""Get an $MFT number for this file record segment (FRS) and return it."""
 
 		# This is a 48-bit integer (other sources incorrectly state that this is a 32-bit integer), but the higher part (16 bits) is stored in the lower bytes.
+		# At least one third-party NTFS implementation (a partition manager) does not store a valid value in this field.
+
 		mft_number_hi, mft_number_lo = struct.unpack('<HL', self.frs_data[42 : 48])
 		return (mft_number_hi << 32) | mft_number_lo
 
@@ -1382,8 +1384,18 @@ class FragmentedFile(object):
 		self.current_offset_in_file += len(data)
 
 		bytes_left = size - len(data)
-		if bytes_left > 0: # Recursively read remaining data.
-			data += self.read(bytes_left)
+		while bytes_left > 0:
+			if self.current_offset_in_file >= self.file_size:
+				break
+
+			virtual_cluster_number = self.current_offset_in_file // self.cluster_size
+			offset_in_virtual_cluster = self.current_offset_in_file % self.cluster_size
+
+			new_data = self.read_virtual_cluster(virtual_cluster_number)[offset_in_virtual_cluster : offset_in_virtual_cluster + bytes_left]
+			self.current_offset_in_file += len(new_data)
+
+			data += new_data
+			bytes_left = size - len(data)
 
 		return data
 
