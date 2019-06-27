@@ -5,7 +5,8 @@
 
 import sys
 import csv
-from dfir_ntfs import *
+import argparse
+from dfir_ntfs import MFT, LogFile, USN, Attributes, WSL
 
 def format_timestamp(timestamp):
 	if timestamp is None:
@@ -628,50 +629,55 @@ def process_log():
 		output_file.write(deleted_files)
 		output_file.write('\n\n---\n\n')
 
-def print_usage():
-	print('Extract information from NTFS metadata files')
-	print('')
-	print('Usage:')
-	print(' ntfs_parser --mft <input file ($MFT)> <output file (CSV)>')
-	print(' ntfs_parser --usn <input file ($MFT)> <input file ($UsnJrnl:$J)> <output file (CSV)>')
-	print(' ntfs_parser --log <input file ($MFT)> <input file ($LogFile)> <output file (TXT)>')
 
-if len(sys.argv) != 4 and len(sys.argv) != 5:
-	print_usage()
-	sys.exit(0)
+if __name__ == "__main__":
 
-mode = sys.argv[1]
-if mode not in [ '--mft', '--usn', '--log' ]:
-	print_usage()
-	sys.exit(0)
+	progr_name='ntfs_parser'
+	descr = "Extract information from NTFS metadata files and volumes."
+	my_parser = argparse.ArgumentParser(prog=progr_name, description=descr, prefix_chars='--')
+	my_group = my_parser.add_mutually_exclusive_group(required=True)
+	my_group.add_argument('--mft', metavar=('<$MFT','<CSV>'), type=str, help='set the input file ($MFT) and the output filename (CSV)',nargs=2)
+	my_group.add_argument('--usn', metavar=('<$MFT>','<$UsnJrnl:$J>','<CSV>'), type=str, help='set the input file ($MFT) and the input file ($UsnJrnl:$J) and the output filename (CSV)>', nargs=3)
+	my_group.add_argument('--log', metavar=('<$MFT>','<$LogFile>','<TXT>'), type=str, help='set the input file ($MFT) and the input file ($LogFile) and the output filename (TXT)', nargs=3)
+	#my_group.add_argument('--indx', metavar=('<raw image>','<volume offset (in bytes)>', '<CSV'), type=str, help='set the input file (raw image) and the volume offset (in bytes) and the output file (CSV)', nargs=3)
+	args = my_parser.parse_args()
 
-if mode in [ '--mft' ] and len(sys.argv) != 4:
-	print_usage()
-	sys.exit(0)
+	#print(vars(args))
+	
+	if args.mft:
+		input_file = open(args.mft[0], 'rb')
+		output_file = open(args.mft[1], 'w', newline = '', encoding = 'utf-8')
+		csv_writer = csv.writer(output_file, dialect = 'excel')
 
-if mode in [ '--usn', '--log' ] and len(sys.argv) != 5:
-	print_usage()
-	sys.exit(0)
+		process_mft()
+	
+	elif args.usn:
+		input_mft = open(args.usn[0], 'rb')
+		input_file = open(args.usn[1], 'rb')
+		output_file = open(args.usn[2], 'w', newline = '', encoding = 'utf-8')
+		csv_writer = csv.writer(output_file, dialect = 'excel')
 
-if mode == '--mft':
-	input_file = open(sys.argv[2], 'rb')
-	output_file = open(sys.argv[3], 'w', newline = '', encoding = 'utf-8')
-	csv_writer = csv.writer(output_file, dialect = 'excel')
+		process_usn()
+	
+	elif args.log:
+		input_mft = open(args.log[0], 'rb')
+		input_file = open(args.log[1], 'rb')
+		output_file = open(args.log[2], 'w', encoding = 'utf-8')
 
-	process_mft()
-elif mode == '--usn':
-	input_mft = open(sys.argv[2], 'rb')
-	input_file = open(sys.argv[3], 'rb')
-	output_file = open(sys.argv[4], 'w', newline = '', encoding = 'utf-8')
-	csv_writer = csv.writer(output_file, dialect = 'excel')
+		process_log()
 
-	process_usn()
-elif mode == '--log':
-	input_mft = open(sys.argv[2], 'rb')
-	input_file = open(sys.argv[3], 'rb')
-	output_file = open(sys.argv[4], 'w', encoding = 'utf-8')
+	# elif args.indx:
+	# 	input_file = open(args.indx[0], 'rb')
+	# 	try:
+	# 		input_offset = int(args.indx[1])
+	# 	except ValueError:
+	# 		print(f"value error : {args.indx[1]} is not an integer")
+	# 		sys.exit(0)
 
-	process_log()
+	# 	output_file = open(args.indx[2], 'w', newline = '', encoding = 'utf-8')
+	# 	csv_writer = csv.writer(output_file, dialect = 'excel')
 
-input_file.close()
-output_file.close()
+	# 	process_indx()
+
+	input_file.close()
+	output_file.close()
