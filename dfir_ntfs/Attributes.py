@@ -26,6 +26,12 @@ ATTR_TYPE_EA = 0xE0
 ATTR_TYPE_LOGGED_UTILITY_STREAM = 0x100
 ATTR_TYPE_END = 0xFFFFFFFF
 
+# Starting from Windows 2000, the following 32-bit value is stored after the ATTR_TYPE_END marker: 0x11477982.
+# This value represents an invalid (not aligned to 8 bytes) attribute record length.
+# If the ATTR_TYPE_END marker is corrupt (not equal to 0xFFFFFFFF), then the Chkdsk scan will detect the corruption using this length.
+# This is done because the Chkdsk tool allows unknown attribute codes. This "fake" size is not used for anything else.
+ATTR_TYPE_END_FAKE_SIZE = 0x11477982
+
 ATTRIBUTES_SUPPORTED = [ ATTR_TYPE_STANDARD_INFORMATION, ATTR_TYPE_ATTRIBUTE_LIST, ATTR_TYPE_FILE_NAME, ATTR_TYPE_OBJECT_ID, ATTR_TYPE_SECURITY_DESCRIPTOR, ATTR_TYPE_VOLUME_NAME, ATTR_TYPE_VOLUME_INFORMATION, ATTR_TYPE_DATA, ATTR_TYPE_INDEX_ROOT, ATTR_TYPE_INDEX_ALLOCATION, ATTR_TYPE_BITMAP, ATTR_TYPE_REPARSE_POINT, ATTR_TYPE_EA_INFORMATION, ATTR_TYPE_EA, ATTR_TYPE_LOGGED_UTILITY_STREAM ]
 
 # Flags for the $FILE_NAME attribute:
@@ -295,7 +301,7 @@ class StandardInformation(GenericAttribute):
 		print(' File attributes: {}'.format(hex(self.get_file_attributes())))
 		print(' Current version, maximum versions: {}, {}'.format(self.get_version_number(), self.get_maximum_versions()))
 		print(' Is case sensitive: {}'.format(self.is_case_sensitive()))
-		print(' Class ID, owner ID, security ID: {}'.format(self.get_class_id(), self.get_owner_id(), self.get_security_id()))
+		print(' Class ID, owner ID, security ID: {}, {}, {}'.format(self.get_class_id(), self.get_owner_id(), self.get_security_id()))
 		print(' Quota charged: {}'.format(self.get_quota_charged()))
 		print(' Update sequence number: {}'.format(self.get_usn()))
 

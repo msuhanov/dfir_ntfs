@@ -10,8 +10,9 @@ import datetime
 import re
 import io
 import gzip
+import tarfile
 import pickle
-from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector
+from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy
 
 TEST_DATA_DIR = 'test_data'
 
@@ -83,6 +84,26 @@ NTFS_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_frag_mft.bin')
 NTFS_EXTREMELY_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_extremely_fragmented_mft.raw') # This file is too large to be included into the repository.
 NTFS_EXTREMELY_FRAGMENTED_MFT_INDX_DATA_RUNS = os.path.join(TEST_DATA_DIR, 'data_runs.pickle')
 NTFS_INDEX_GZ = os.path.join(TEST_DATA_DIR, 'ntfs_index.raw.gz')
+
+VOLUME_START_VSS_1 = os.path.join(TEST_DATA_DIR, 'volume_start.bin')
+VOLUME_START_VSS_2 = os.path.join(TEST_DATA_DIR, 'volume_start_2.bin')
+VOLUME_START_VSS_3 = os.path.join(TEST_DATA_DIR, 'volume_start_3.bin')
+VOLUME_START_VSS_4 = os.path.join(TEST_DATA_DIR, 'volume_start_nosc_2003.bin')
+VOLUME_START_VSS_5 = os.path.join(TEST_DATA_DIR, 'volume_start_nosc_10.bin')
+
+VOLUME_CONTROL_BLOCK_FILE_1 = os.path.join(TEST_DATA_DIR, 'control_block_file.bin')
+VOLUME_CONTROL_BLOCK_FILE_2 = os.path.join(TEST_DATA_DIR, 'control_block_file_2.bin')
+
+VOLUME_VSS_10 = os.path.join(TEST_DATA_DIR, 'vss_10.tgz')
+VOLUME_VSS_10_HASHES = os.path.join(TEST_DATA_DIR, 'vss_10_hashes.txt')
+VOLUME_VSS_10_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_10_all_hashes.txt')
+VOLUME_VSS_2003 = os.path.join(TEST_DATA_DIR, 'vss_2003.tgz')
+VOLUME_VSS_2003_HASHES = os.path.join(TEST_DATA_DIR, 'vss_2003_hashes.txt')
+VOLUME_VSS_2003_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_2003_all_hashes.txt')
+
+NTFS_LONE_WOLF = os.path.join(TEST_DATA_DIR, 'dc_lonewolf.raw') # This file is too large to be included into the repository. This is a raw image from the 2018 Lone Wolf Scenario.
+VOLUME_VSS_LONE_WOLF_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_lw_all_hashes.txt') # This file is too large to be included into the repository.
+VOLUME_VSS_LONE_WOLF_OFFSETS = os.path.join(TEST_DATA_DIR, 'vss_lw_offsets.txt')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -2138,3 +2159,630 @@ def test_merged_index():
 		total_length += length
 
 	assert total_length * 1024 == 11262492672
+
+def test_start_block():
+	f = open(VOLUME_START_VSS_1, 'rb')
+
+	sb = ShadowCopy.StartBlock(f.read())
+
+	assert '3808876b-c176-4e48-b7ae-04046e6cc752' in str(sb.get_diff_area_guid())
+	assert sb.get_version() == 1
+	assert sb.get_type() == 1
+
+	assert str(sb.get_max_diff_area_size() / (1024*1024*1024)).startswith('14.8')
+	assert sb.get_application_flags() == 1
+	assert sb.get_free_space_precopy_percentage() == sb.get_hot_blocks_precopy_percentage() == sb.get_hot_blocks_days() == 0
+	assert sb.get_protection_flags() == 0
+	assert sb.get_volume_guid() == sb.get_storage_guid()
+	assert sb.is_storage_local()
+	assert sb.get_first_control_block_offset() > 0
+
+	f.close()
+
+	f = open(VOLUME_START_VSS_2, 'rb')
+
+	sb = ShadowCopy.StartBlock(f.read())
+
+	assert '3808876b-c176-4e48-b7ae-04046e6cc752' in str(sb.get_diff_area_guid())
+	assert sb.get_version() == 1
+	assert sb.get_type() == 1
+
+	assert sb.get_free_space_precopy_percentage() == sb.get_hot_blocks_precopy_percentage() == sb.get_hot_blocks_days() == 0
+	assert sb.get_protection_flags() == 0
+	assert sb.get_volume_guid() != sb.get_storage_guid()
+	assert not sb.is_storage_local()
+	assert sb.get_first_control_block_offset() > 0
+
+	f.close()
+
+	f = open(VOLUME_START_VSS_3, 'rb')
+
+	sb = ShadowCopy.StartBlock(f.read())
+
+	assert '3808876b-c176-4e48-b7ae-04046e6cc752' in str(sb.get_diff_area_guid())
+	assert sb.get_version() == 1
+	assert sb.get_type() == 1
+
+	assert sb.get_free_space_precopy_percentage() == sb.get_hot_blocks_precopy_percentage() == sb.get_hot_blocks_days() == 0
+	assert sb.get_protection_flags() == 0
+	assert sb.get_volume_guid() == sb.get_storage_guid()
+	assert sb.is_storage_local()
+	assert sb.get_first_control_block_offset() > 0
+
+	f.close()
+
+	f = open(VOLUME_START_VSS_4, 'rb')
+
+	sb = ShadowCopy.StartBlock(f.read())
+
+	assert '3808876b-c176-4e48-b7ae-04046e6cc752' in str(sb.get_diff_area_guid())
+	assert sb.get_first_control_block_offset() == 0
+
+	f.close()
+
+	f = open(VOLUME_START_VSS_5, 'rb')
+
+	sb = ShadowCopy.StartBlock(f.read())
+
+	assert '3808876b-c176-4e48-b7ae-04046e6cc752' in str(sb.get_diff_area_guid())
+	assert sb.get_first_control_block_offset() == 0
+
+	f.close()
+
+def test_control_blocks():
+	f = open(VOLUME_CONTROL_BLOCK_FILE_1, 'rb')
+
+	c = 0
+	cc = 0
+	ccc = 0
+	last_guid = None
+
+	relative_offset = 0
+	volume_offset = 5079040
+
+	guid_list_t2 = []
+	guid_list_t3 = []
+
+	while True:
+		buf = f.read(0x4000)
+		assert len(buf) == 0x4000
+
+		c += 1
+		cb = ShadowCopy.ControlBlock(buf)
+
+		assert cb.get_relative_offset() == relative_offset
+		relative_offset += 0x4000
+
+		assert cb.get_volume_offset() == volume_offset
+		if cb.get_next_control_block_volume_offset() == 0:
+			break
+
+		assert cb.get_next_control_block_volume_offset() == volume_offset + 0x4000
+		volume_offset += 0x4000
+
+		for item in cb.items():
+			if type(item) is ShadowCopy.ControlBlockItem2:
+				cc += 1
+				guid_list_t2.append(item.get_store_guid())
+
+				assert item.get_volume_size() in [ 51853131776, 63846744064 ]
+
+				ts = item.get_timestamp()
+				assert ts.year == 2019 and ts.month == 5 and ts.day in [ 19, 20, 22 ]
+				last_guid = item.get_store_guid()
+
+			if type(item) is ShadowCopy.ControlBlockItem2:
+				ccc += 1
+				guid_list_t3.append(item.get_store_guid())
+
+	assert c == 4
+	assert cc == 7 and cc == ccc
+	assert 'b02a9bea-7ceb-11e9-be0a-525400123456' in str(last_guid)
+
+	assert sorted(guid_list_t2) == sorted(guid_list_t3)
+
+	f.close()
+
+	f = open(VOLUME_CONTROL_BLOCK_FILE_2, 'rb')
+
+	c = 0
+	cc = 0
+	ccc = 0
+	relative_offset = 0
+	volume_offset = 278528
+
+	guid_list_t2 = []
+	guid_list_t3 = []
+
+	while True:
+		buf = f.read(0x4000)
+		assert len(buf) == 0x4000
+
+		c += 1
+		cb = ShadowCopy.ControlBlock(buf)
+
+		assert cb.get_relative_offset() == relative_offset
+		relative_offset += 0x4000
+
+		assert cb.get_volume_offset() == volume_offset
+		if cb.get_next_control_block_volume_offset() == 0:
+			break
+
+		assert cb.get_next_control_block_volume_offset() == volume_offset + 0x4000
+		volume_offset += 0x4000
+
+		for item in cb.items():
+			if type(item) is ShadowCopy.ControlBlockItem2:
+				cc += 1
+				guid_list_t2.append(item.get_store_guid())
+
+				assert '06ca047e-8501-11e9-a212-525400123456' in str(item.get_store_guid()) or '06ca047f-8501-11e9-a212-525400123456' in str(item.get_store_guid())
+				assert item.get_volume_size() == 137427945984
+
+				ts = item.get_timestamp()
+				assert ts.year == 2019 and ts.month == 6 and ts.day == 2 and ts.hour == 10
+				assert (ts.minute == 40 and ts.second == 18) or (ts.minute == 41 and ts.second == 21)
+
+			if type(item) is ShadowCopy.ControlBlockItem2:
+				ccc += 1
+				guid_list_t3.append(item.get_store_guid())
+
+	assert cc == 2 and cc == ccc
+	assert c == 4
+	assert sorted(guid_list_t2) == sorted(guid_list_t3)
+
+	f.close()
+
+def test_shadow_parser_1():
+	f = tarfile.open(VOLUME_VSS_10, 'r').extractfile('vss_10.raw')
+
+	vss = ShadowCopy.ShadowParser(f, 2048 * 512, 268406783 * 512)
+	lines_hashes = open(VOLUME_VSS_10_HASHES, 'rb').read().decode().splitlines()
+
+	with pytest.raises(ValueError):
+		vss.translate_exact_offset(16 * 1024)
+
+	with pytest.raises(ShadowCopy.ShadowCopyNotFoundException):
+		vss.select_shadow(16)
+
+	c = 0
+	for shadow in vss.shadows():
+		c += 1
+		vss.select_shadow(shadow.store_guid)
+
+	assert c == 6
+
+	prev_stack_position = None
+	for line_hash in lines_hashes:
+		stack_position, offset, flags, md5_list = line_hash.split('\t')
+
+		stack_position = int(stack_position)
+		offset = int(offset)
+		flags = int(flags)
+
+		md5_list = md5_list.split(' ')
+		assert len(md5_list) == 32
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		try:
+			new_offsets = vss.translate_exact_offset(offset)
+		except ValueError:
+			assert md5_list == [ 'invalid' ] * 32
+			continue
+
+		assert len(new_offsets) == 32
+		assert flags & 1 == 0
+
+		md5_list_calculated = []
+		i = 0
+		while True:
+			f.seek(2048 * 512 + new_offsets[i])
+			buf = f.read(512)
+
+			md5 = hashlib.md5()
+			md5.update(buf)
+			md5_list_calculated.append(md5.hexdigest() + '_' + str(len(buf)))
+
+			if len(md5_list_calculated) == 32:
+				break
+
+			i += 1
+
+		assert md5_list_calculated == md5_list
+
+	f.close()
+
+	f = tarfile.open(VOLUME_VSS_2003, 'r').extractfile('vss_2003.raw')
+	lines_hashes = open(VOLUME_VSS_2003_HASHES, 'rb').read().decode().splitlines()
+
+	vss = ShadowCopy.ShadowParser(f, 63 * 512)
+
+	c = 0
+	for shadow in vss.shadows():
+		c += 1
+		vss.select_shadow(shadow.store_guid)
+
+	assert c == 6
+
+	prev_stack_position = None
+	for line_hash in lines_hashes:
+		stack_position, offset, flags, md5_list = line_hash.split('\t')
+
+		stack_position = int(stack_position)
+		offset = int(offset)
+		flags = int(flags)
+
+		assert flags == 0
+
+		md5_list = md5_list.split(' ')
+		assert len(md5_list) == 32
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+		assert offset != new_offsets[0]
+
+		md5_list_calculated = []
+		i = 0
+		while True:
+			f.seek(63 * 512 + new_offsets[i])
+			buf = f.read(512)
+			assert len(buf) == 512
+
+			md5 = hashlib.md5()
+			md5.update(buf)
+			md5_list_calculated.append(md5.hexdigest())
+
+			if len(md5_list_calculated) == 32:
+				break
+
+			i += 1
+
+		assert md5_list_calculated == md5_list
+
+	f.close()
+
+def test_shadow_parser_2():
+	f = tarfile.open(VOLUME_VSS_2003, 'r').extractfile('vss_2003.raw')
+	lines_hashes = open(VOLUME_VSS_2003_ALL_HASHES, 'rb').read().decode().splitlines()
+
+	vss = ShadowCopy.ShadowParser(f, 63 * 512)
+
+	prev_stack_position = None
+	for line_hash in lines_hashes:
+		stack_position, offset, md5_list = line_hash.split('\t')
+
+		stack_position = int(stack_position)
+		offset = int(offset)
+
+		md5_list = md5_list.split(' ')
+		assert len(md5_list) == 32
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+
+		md5_list_calculated = []
+		i = 0
+		while True:
+			f.seek(63 * 512 + new_offsets[i])
+			buf = f.read(512)
+			assert len(buf) == 512
+
+			md5 = hashlib.md5()
+			md5.update(buf)
+			md5_list_calculated.append(md5.hexdigest())
+
+			if len(md5_list_calculated) == 32:
+				break
+
+			i += 1
+
+		assert md5_list_calculated == md5_list
+
+	f.close()
+
+	f = tarfile.open(VOLUME_VSS_10, 'r').extractfile('vss_10.raw')
+	lines_hashes = open(VOLUME_VSS_10_ALL_HASHES, 'rb').read().decode().splitlines()
+
+	vss = ShadowCopy.ShadowParser(f, 2048 * 512)
+
+	prev_stack_position = None
+	for line_hash in lines_hashes:
+		stack_position, offset, md5_list = line_hash.split('\t')
+
+		stack_position = int(stack_position)
+		offset = int(offset)
+
+		md5_list = md5_list.split(' ')
+		assert len(md5_list) == 32
+
+		if 'invalid' in md5_list[0] or md5_list[0].endswith('_0'):
+			assert offset == 137435791360
+
+			new_offsets = vss.translate_exact_offset(137435791360)
+			continue
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+
+		if len(new_offsets) > 0:
+			md5_list_calculated = []
+			i = 0
+			while True:
+				f.seek(2048 * 512 + new_offsets[i])
+				buf = f.read(512)
+				assert len(buf) == 512
+
+				md5 = hashlib.md5()
+				md5.update(buf)
+				md5_list_calculated.append(md5.hexdigest() + '_' + str(len(buf)))
+
+				if len(md5_list_calculated) == 32:
+					break
+
+				i += 1
+
+			assert md5_list_calculated == md5_list
+
+	f.close()
+
+def test_shadow_parser_vbr():
+	f = tarfile.open(VOLUME_VSS_2003, 'r').extractfile('vss_2003.raw')
+	vss = ShadowCopy.ShadowParser(f, 63 * 512)
+
+	for stack_position in [ 1, 2, 3, 5 ]:
+		vss.select_shadow(stack_position)
+
+		new_offsets = vss.translate_exact_offset(0)
+		assert len(new_offsets) == 32
+
+		f.seek(63 * 512 + new_offsets[0])
+		buf = f.read(512)
+		assert len(buf) == 512
+
+		md5 = hashlib.md5()
+		md5.update(buf)
+		md5_hash = md5.hexdigest()
+
+		assert md5_hash == 'a316a167c7b099014f7a20d89fb09f73'
+
+	f.close()
+
+	f = tarfile.open(VOLUME_VSS_10, 'r').extractfile('vss_10.raw')
+	vss = ShadowCopy.ShadowParser(f, 2048 * 512)
+
+	c1 = 0
+	c2 = 0
+	for stack_position in [ 1, 2, 3, 5 ]:
+		vss.select_shadow(stack_position)
+
+		new_offsets = vss.translate_exact_offset(0)
+		assert len(new_offsets) == 32
+
+		f.seek(2048 * 512 + new_offsets[0])
+		buf = f.read(512)
+		assert len(buf) == 512
+
+		md5 = hashlib.md5()
+		md5.update(buf)
+		md5_hash = md5.hexdigest()
+
+		if stack_position in [ 1, 2 ]:
+			c1 += 1
+			assert md5_hash == '9923f57389c97301c01b89b43922e042'
+		else:
+			c2 += 1
+			assert md5_hash == '47ae0418a26d06e9b8dc781177f14d13'
+
+	assert c1 == c2 == 2
+
+	f.close()
+
+def test_shadow_parser_3():
+	try:
+		f = open(NTFS_LONE_WOLF, 'rb')
+		lines_hashes = open(VOLUME_VSS_LONE_WOLF_ALL_HASHES, 'rb').read().decode().splitlines()
+	except Exception:
+		pytest.skip('No test file found')
+
+	vss = ShadowCopy.ShadowParser(f, 1259520 * 512)
+
+	vss.select_shadow(1)
+	l1 = vss.translate_exact_offset(9632907264)
+	vss.select_shadow(2)
+	l2 = vss.translate_exact_offset(9632907264)
+	assert l1 == l2 == [ None ] * 32
+
+	vss.select_shadow(1)
+	l1 = vss.translate_exact_offset(1152303104)
+	vss.select_shadow(2)
+	l2 = vss.translate_exact_offset(1152303104)
+	assert l1 == l2
+
+	ll = []
+	for i in range(0, 32):
+		ll.append(1152303104 + i * 512)
+
+	assert l2 == ll
+
+	prev_stack_position = None
+	for line_offset in lines_offsets:
+		stack_position, offset, flags = line_offset.split('\t')
+
+		stack_position = int(stack_position)
+		offset = int(offset)
+		flags = int(flags)
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		md5_list_found = False
+		for line_hashes in lines_hashes:
+			if line_hashes.startswith('{}\t{}\t'.format(stack_position, offset)):
+				md5_list = line_hashes.split('\t')[2].split(' ')
+				md5_list_found = True
+				break
+
+		assert md5_list_found
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+
+		if len(new_offsets) > 0:
+			md5_list_calculated = []
+			i = 0
+			while True:
+				if new_offsets[i] is None:
+					md5_list_calculated.append('bf619eac0cdf3f68d496ea9344137e8b') # A block of 512 null bytes.
+				else:
+					f.seek(1259520 * 512 + new_offsets[i])
+					buf = f.read(512)
+					assert len(buf) == 512
+
+					md5 = hashlib.md5()
+					md5.update(buf)
+					md5_list_calculated.append(md5.hexdigest())
+
+				if len(md5_list_calculated) == 32:
+					break
+
+				i += 1
+
+			assert md5_list_calculated == md5_list
+
+	prev_stack_position = None
+	for line_offset in lines_offsets:
+		stack_position, offset, flags = line_offset.split('\t')
+
+		stack_position = int(stack_position)
+		if stack_position == 1:
+			stack_position = 2
+		elif stack_position == 2:
+			stack_position = 1
+		else:
+			assert False
+
+		offset = int(offset)
+		flags = int(flags)
+
+		if '{}\t{}\t{}'.format(stack_position, offset, 1) in lines_offsets:
+			continue
+
+		if prev_stack_position is None or prev_stack_position != stack_position:
+			vss.select_shadow(stack_position)
+			prev_stack_position = stack_position
+
+		md5_list_found = False
+		for line_hashes in lines_hashes:
+			if line_hashes.startswith('{}\t{}\t'.format(stack_position, offset)):
+				md5_list = line_hashes.split('\t')[2].split(' ')
+				md5_list_found = True
+				break
+
+		assert md5_list_found
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+
+		if len(new_offsets) > 0:
+			md5_list_calculated = []
+			i = 0
+			while True:
+				if new_offsets[i] is None:
+					md5_list_calculated.append('bf619eac0cdf3f68d496ea9344137e8b') # A block of 512 null bytes.
+				else:
+					f.seek(1259520 * 512 + new_offsets[i])
+					buf = f.read(512)
+					assert len(buf) == 512
+
+					md5 = hashlib.md5()
+					md5.update(buf)
+					md5_list_calculated.append(md5.hexdigest())
+
+				if len(md5_list_calculated) == 32:
+					break
+
+				i += 1
+
+			assert md5_list_calculated == md5_list
+
+	f.close()
+
+def test_shadow_parser_file_like():
+	f = tarfile.open(VOLUME_VSS_10, 'r').extractfile('vss_10.raw')
+	lines_hashes = open(VOLUME_VSS_10_ALL_HASHES, 'rb').read().decode().splitlines()
+
+	vss = ShadowCopy.ShadowParser(f, 2048 * 512)
+	vss.select_shadow(1)
+
+	c = 0
+
+	for line_hash in lines_hashes:
+		offset = line_hash.split('\t')[1]
+		offset = int(offset)
+
+		if offset == 137435791360:
+			continue
+
+		new_offsets = vss.translate_exact_offset(offset)
+		assert len(new_offsets) == 32
+		c += 1
+
+		i = 0
+		buf = b''
+		while i < 32:
+			f.seek(2048 * 512 + new_offsets[i])
+			buf += f.read(512)
+			assert len(buf) % 512 == 0
+
+			i += 1
+
+		assert vss.seek(offset) == offset
+		assert vss.read(0x4000) == buf
+
+		assert vss.seek(offset) == offset
+		buf_large = vss.read(0x8000)
+		assert len(buf_large) == 0x8000 and buf_large.startswith(buf)
+
+		assert vss.seek(offset) == offset
+		buf_200 = vss.read(0x4200)
+		assert len(buf_200) == 0x4200
+		assert buf_200[ : 0x4000] == buf and buf_200[0x4000 : ] == buf_large[0x4000 : 0x4200]
+
+		assert vss.seek(offset) == offset
+		buf_1 = vss.read(0x4001)
+		assert len(buf_1) == 0x4001
+		assert buf_1[ : 0x4000] == buf and buf_1[0x4000 : ] == buf_large[0x4000 : 0x4001]
+
+		assert vss.seek(offset) == offset
+		buf_4001 = vss.read(0x8001)
+		assert len(buf_4001) == 0x8001
+		assert buf_4001[ : 0x4000] == buf and buf_large == buf_4001[ : 0x8000]
+
+		assert vss.seek(offset) == offset
+		assert vss.read(0x4000-1) == buf[: 0x4000-1]
+		assert vss.seek(offset) == offset
+		assert vss.read(5) == buf[: 5]
+		assert vss.seek(offset) == offset
+		assert vss.read(1) == buf[: 1]
+		assert vss.seek(offset) == offset
+
+		if c == 25:
+			break
+
+	f.close()

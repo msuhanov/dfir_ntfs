@@ -64,7 +64,16 @@ def hexdump(buf):
 
 	return output_lines
 
-def process_mft():
+def format_source(source_str, source_tag):
+	if source_str is None or len(source_str) == 0:
+		return ''
+
+	if source_tag is None or len(source_tag) == 0:
+		return source_str
+
+	return '{} ({})'.format(source_str, source_tag)
+
+def process_mft(source_tag = None):
 	global input_file, csv_writer
 
 	mft = MFT.MasterFileTableParser(input_file)
@@ -178,9 +187,9 @@ def process_mft():
 				fn_ctime = format_timestamp(attr_file_name.get_ctime())
 				fn_etime = format_timestamp(attr_file_name.get_etime())
 
-				csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+				csv_writer.writerow([format_source('File record', source_tag), fr_number, fr_in_use, fr_directory, fr_lsn, file_path, si_mtime, si_atime, si_ctime, si_etime, si_usn, fn_mtime, fn_atime, fn_ctime, fn_etime, objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
 		else:
-			csv_writer.writerow(['File record', fr_number, fr_in_use, fr_directory, fr_lsn, '', si_mtime, si_atime, si_ctime, si_etime, si_usn, '', '', '', '', objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
+			csv_writer.writerow([format_source('File record', source_tag), fr_number, fr_in_use, fr_directory, fr_lsn, '', si_mtime, si_atime, si_ctime, si_etime, si_usn, '', '', '', '', objid_time, file_size, ads_list, wsl_mtime, wsl_atime, wsl_chtime])
 
 		# Parse a file name index in this file record (if present).
 
@@ -227,7 +236,7 @@ def process_mft():
 
 					file_size = attr_file_name.get_file_size()
 
-					csv_writer.writerow(['Index record', fr_number, '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
+					csv_writer.writerow([format_source('Index record', source_tag), fr_number, '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
 
 		# Parse slack space in this file record (if present).
 
@@ -267,7 +276,7 @@ def process_mft():
 
 				file_size = attr_file_name.get_file_size()
 
-				csv_writer.writerow(['Slack', '?', '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
+				csv_writer.writerow([format_source('Slack', source_tag), '?', '?', fr_directory, '', file_path, '', '', '', '', '', fn_mtime, fn_atime, fn_ctime, fn_etime, '', file_size, '', '', '', ''])
 
 def process_usn():
 	global input_file, input_mft, csv_writer
@@ -811,21 +820,42 @@ def process_indx():
 
 	fs.close()
 
+def process_all_mft():
+	global input_file_volume, input_offset_volume
+
+	fs = MFT.FileSystemParser(input_file_volume, input_offset_volume)
+
+	global input_file
+
+	input_file = fs
+	process_mft('main volume')
+
+	try:
+		vss = ShadowCopy.ShadowParser(input_file_volume, input_offset_volume)
+	except ShadowCopy.ShadowCopiesDisabledException:
+		pass
+	else:
+		for shadow_copy in vss.shadows():
+			vss.select_shadow(shadow_copy.store_guid)
+			input_file = MFT.FileSystemParser(vss, 0)
+			process_mft('shadow copy {}'.format(shadow_copy.stack_position))
+
 def print_usage():
-	print('Extract information from NTFS metadata files and volumes')
+	print('Extract information from NTFS metadata files, volumes, and shadow copies')
 	print('')
 	print('Usage:')
 	print(' ntfs_parser --mft <input file ($MFT)> <output file (CSV)>')
 	print(' ntfs_parser --usn <input file ($MFT)> <input file ($UsnJrnl:$J)> <output file (CSV)>')
 	print(' ntfs_parser --log <input file ($MFT)> <input file ($LogFile)> <output file (TXT)>')
 	print(' ntfs_parser --indx <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
+	print(' ntfs_parser --all-mft <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
 
 if len(sys.argv) != 4 and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mft', '--usn', '--log', '--indx' ]:
+if mode not in [ '--mft', '--usn', '--log', '--indx', '--all-mft' ]:
 	print_usage()
 	sys.exit(0)
 
@@ -833,7 +863,7 @@ if mode in [ '--mft' ] and len(sys.argv) != 4:
 	print_usage()
 	sys.exit(0)
 
-if mode in [ '--usn', '--log', '--indx' ] and len(sys.argv) != 5:
+if mode in [ '--usn', '--log', '--indx', '--all-mft' ] and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
@@ -868,6 +898,18 @@ elif mode == '--indx':
 	csv_writer = csv.writer(output_file, dialect = 'excel')
 
 	process_indx()
+elif mode == '--all-mft':
+	input_file_volume = open(sys.argv[2], 'rb')
+	try:
+		input_offset_volume = int(sys.argv[3])
+	except ValueError:
+		print_usage()
+		sys.exit(0)
+
+	output_file = open(sys.argv[4], 'w', newline = '', encoding = 'utf-8')
+	csv_writer = csv.writer(output_file, dialect = 'excel')
+
+	process_all_mft()
 
 input_file.close()
 output_file.close()

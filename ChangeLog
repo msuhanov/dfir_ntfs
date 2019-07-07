@@ -1,3 +1,11 @@
+Version: 1.0.0-beta15
+
+Add a module to work with shadow copies.
+Add a mode to parse $MFT files from a volume and its shadow copies.
+Minor changes.
+
+---
+
 Version: 1.0.0-beta14
 
 Minor update.
