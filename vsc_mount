@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+
+# dfir_ntfs: an NTFS parser for digital forensics & incident response
+# (c) Maxim Suhanov
+
+import sys
+import os
+import errno
+import stat
+import llfuse
+from dfir_ntfs import ShadowCopy
+
+FILE_HANDLE_ROOT_DIR = 1
+FILE_HANDLE_IMAGE_FILE = 2
+
+INODE_IMAGE_FILE = llfuse.ROOT_INODE + 1
+FILE_NAME_IMAGE_FILE = b'image.raw'
+
+class VSCFS(llfuse.Operations):
+	"""This is an implementation of a FUSE file system (llfuse) for a shadow copy."""
+
+	def __init__(self, volume_path, volume_offset, stack_position):
+		super(VSCFS, self).__init__()
+
+		# Open the volume file.
+		self._volume_file = open(volume_path, 'rb')
+
+		# Save the arguments.
+		self._volume_offset = volume_offset
+		self._stack_position = stack_position
+
+		# Parse the shadow copy.
+		self._vss = ShadowCopy.ShadowParser(self._volume_file, self._volume_offset)
+		self._vss.select_shadow(stack_position)
+
+	def _construct_attr_for_image_file(self):
+		attr = llfuse.EntryAttributes()
+
+		attr.st_ino = INODE_IMAGE_FILE
+		attr.generation = 0
+
+		attr.entry_timeout = 300
+		attr.attr_timeout = 300
+
+		attr.st_mode = stat.S_IFREG | 0o644
+		attr.st_nlink = 1
+
+		attr.st_uid = os.getuid()
+		attr.st_gid = os.getgid()
+
+		attr.st_rdev = 0
+
+		attr.st_size = self._vss.current_volume_size
+
+		attr.st_blksize = 512
+		attr.st_blocks = (attr.st_size + 512 - 1) // 512
+
+		attr.st_mtime_ns = 0
+		attr.st_atime_ns = 0
+		attr.st_ctime_ns = 0
+
+		return attr
+
+	def _construct_attr_for_root(self):
+		attr = llfuse.EntryAttributes()
+
+		attr.st_ino = llfuse.ROOT_INODE
+		attr.generation = 0
+
+		attr.entry_timeout = 300
+		attr.attr_timeout = 300
+
+		attr.st_mode = stat.S_IFDIR | 0o755
+		attr.st_nlink = 1
+
+		attr.st_uid = os.getuid()
+		attr.st_gid = os.getgid()
+
+		attr.st_rdev = 0
+
+		attr.st_size = 0
+
+		attr.st_blksize = 512
+		attr.st_blocks = (attr.st_size + 512 - 1) // 512
+
+		attr.st_mtime_ns = 0
+		attr.st_atime_ns = 0
+		attr.st_ctime_ns = 0
+
+		return attr
+
+	def init(self):
+		pass # Nothing to do here.
+
+	def destroy(self):
+		# Close the shadow copy.
+		self._vss.close()
+
+		# Close the volume file.
+		self._volume_file.close()
+
+	def access(self, inode, mode, ctx):
+		return True
+
+	def getattr(self, inode, ctx):
+		if inode == INODE_IMAGE_FILE:
+			return self._construct_attr_for_image_file()
+		elif inode == llfuse.ROOT_INODE:
+			return self._construct_attr_for_root()
+
+		raise llfuse.FUSEError(errno.EBADF)
+
+	def open(self, inode, flags, ctx):
+		if flags & (os.O_WRONLY | os.O_RDWR | os.O_APPEND) > 0:
+			raise llfuse.FUSEError(errno.EROFS)
+
+		if inode == INODE_IMAGE_FILE:
+			return FILE_HANDLE_IMAGE_FILE
+
+		raise llfuse.FUSEError(errno.ENOENT)
+
+	def opendir(self, inode, ctx):
+		if inode == llfuse.ROOT_INODE:
+			return FILE_HANDLE_ROOT_DIR
+
+		raise llfuse.FUSEError(errno.ENOENT)
+
+	def lookup(self, parent_inode, name, ctx):
+		if parent_inode == llfuse.ROOT_INODE and name == FILE_NAME_IMAGE_FILE:
+			return self._construct_attr_for_image_file()
+
+		raise llfuse.FUSEError(errno.ENOENT)
+
+	def read(self, fh, off, size):
+		if fh != FILE_HANDLE_IMAGE_FILE:
+			raise llfuse.FUSEError(errno.EBADF)
+
+		self._vss.seek(off)
+		return self._vss.read(size)
+
+	def readdir(self, fh, off):
+		if fh != FILE_HANDLE_ROOT_DIR:
+			raise llfuse.FUSEError(errno.EBADF)
+
+		if off == 0:
+			yield (FILE_NAME_IMAGE_FILE, self._construct_attr_for_image_file(), 1)
+
+	def release(self, fh):
+		pass # We do not track handles.
+
+	def releasedir(self, fh):
+		pass # We do not track handles.
+
+	def statfs(self, ctx):
+		stat = llfuse.StatvfsData()
+
+		stat.f_bsize = 512
+		stat.f_frsize = 512
+
+		# We use dummy values here.
+		stat.f_blocks = 0
+		stat.f_bfree = 0
+		stat.f_bavail = 0
+		stat.f_files = 0
+		stat.f_ffree = 0
+		stat.f_favail = 0
+
+		return stat
+
+	def create(self, parent_inode, name, mode, flags, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def fsync(self, fh, datasync):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def fsyncdir(self, fh, datasync):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def link(self, inode, new_parent_inode, new_name, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def mkdir(self, parent_inode, name, mode, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def mknod(self, parent_inode, name, mode, rdev, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def rename(self, parent_inode_old, name_old, parent_inode_new, name_new, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def rmdir(self, parent_inode, name, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def setattr(self, inode, attr, fields, fh, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def symlink(self, parent_inode, name, target, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def unlink(self, parent_inode, name, ctx):
+		raise llfuse.FUSEError(errno.EROFS)
+
+	def write(self, fh, off, buf):
+		raise llfuse.FUSEError(errno.EROFS)
+
+def print_usage():
+	print('Mount a shadow copy from a file system image')
+	print('')
+	print('Usage:')
+	print(' vsc_mount --mount <input file (raw image)> <volume offset (in bytes)> <stack position of a shadow copy> <mount point>')
+	print(' vsc_mount --list <input file (raw image)> <volume offset (in bytes)>')
+
+if len(sys.argv) < 2:
+	print_usage()
+	sys.exit(0)
+
+mode = sys.argv[1]
+if mode not in [ '--mount', '--list' ]:
+	print_usage()
+	sys.exit(0)
+
+if mode == '--mount':
+	if len(sys.argv) != 6:
+		print_usage()
+		sys.exit(0)
+
+	volume_path = sys.argv[2]
+	try:
+		volume_offset = int(sys.argv[3])
+		stack_position = int(sys.argv[4])
+	except ValueError:
+		print_usage()
+		sys.exit(0)
+
+	mount_point = sys.argv[5]
+
+	if not os.path.isfile(volume_path):
+		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
+		sys.exit(255)
+
+	if not os.path.isdir(mount_point):
+		print('Mount point does not exist (or not a directory): {}'.format(mount_point), file = sys.stderr)
+		sys.exit(255)
+
+	file_system = VSCFS(volume_path, volume_offset, stack_position)
+	fuse_options = set(llfuse.default_options)
+	llfuse.init(file_system, mount_point, fuse_options)
+
+	try:
+		llfuse.main(workers = 1)
+	except Exception:
+		llfuse.close()
+		raise
+
+	llfuse.close()
+
+elif mode == '--list':
+	if len(sys.argv) != 4:
+		print_usage()
+		sys.exit(0)
+
+	volume_path = sys.argv[2]
+	try:
+		volume_offset = int(sys.argv[3])
+	except ValueError:
+		print_usage()
+		sys.exit(0)
+
+	if not os.path.isfile(volume_path):
+		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
+		sys.exit(255)
+
+	volume_file = open(volume_path, 'rb')
+
+	try:
+		vss = ShadowCopy.ShadowParser(volume_file, volume_offset)
+	except ShadowCopy.ShadowCopiesDisabledException:
+		print('Shadow copies are disabled')
+	else:
+		print('Shadow copies are enabled')
+		for sc in vss.shadows():
+			print('  Stack position: {}, timestamp (UTC): {}'.format(sc.stack_position, sc.timestamp))
+
+	volume_file.close()

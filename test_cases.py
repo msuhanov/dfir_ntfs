@@ -2599,6 +2599,8 @@ def test_shadow_parser_3():
 	except Exception:
 		pytest.skip('No test file found')
 
+	lines_offsets = open(VOLUME_VSS_LONE_WOLF_OFFSETS, 'rb').read().decode().splitlines()
+
 	vss = ShadowCopy.ShadowParser(f, 1259520 * 512)
 
 	vss.select_shadow(1)

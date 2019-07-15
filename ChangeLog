@@ -1,3 +1,11 @@
+Version: 1.0.0-beta16
+
+Handle old-style bitmaps in shadow copies.
+Add a tool to mount shadow copies as image files.
+Minor changes.
+
+---
+
 Version: 1.0.0-beta15
 
 Add a module to work with shadow copies.

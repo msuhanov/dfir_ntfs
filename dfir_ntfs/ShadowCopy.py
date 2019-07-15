@@ -37,7 +37,7 @@ STORE_FLAG_UNKNOWN_NAME_40 = 0x40 # This snapshot is about to be written to a vo
 STORE_FLAG_UNKNOWN_NAME_80 = 0x80 # The copy-on-write cache is enabled.
 STORE_FLAG_UNKNOWN_100 = 0x100 # This snapshot is offline (deleted).
 STORE_FLAG_UNKNOWN_200 = 0x200 # ???
-STORE_FLAG_UNKNOWN_400 = 0x400 # ???
+STORE_FLAG_UNKNOWN_NAME_400 = 0x400 # When unset, data blocks marked in the bitmap (unused blocks) point to original data (instead of being filled with null bytes).
 
 # Diff area table entry flags:
 DIFF_AREA_TABLE_ENTRY_UNKNOWN_NAME_1 = 0x1 # This entry is a forwarder: the 'data_block_offset_in_store' field contains the offset to be resolved using the next store (the forward offset). This entry also affects a subsequent (not necessary the next one) regular entry (from the same store, if any) having its original volume offset equal to the forward offset: the original volume offset of such an entry is replaced with the original volume offset of the forwarder entry (this affects only one regular entry).
@@ -781,6 +781,8 @@ class ShadowParser(object):
 
 				self.current_possible_null_targets.add(item.data_block_offset_in_store)
 
+		self.return_null_blocks = self.current_cbi2.get_flags() & STORE_FLAG_UNKNOWN_NAME_400 > 0
+
 		self.shadow_selected = True
 		self.current_offset = 0
 
@@ -966,8 +968,13 @@ class ShadowParser(object):
 
 					for i in range(0, 32):
 						offsets.append(offset + i * 512)
-				else: # Return the dummy offsets.
+				elif self.return_null_blocks: # Return the dummy offsets.
 					offsets = [ None ] * 32
+				else: # Return the original offsets of data blocks.
+					offsets = []
+
+					for i in range(0, 32):
+						offsets.append(offset + i * 512)
 
 				return offsets
 
@@ -1019,6 +1026,9 @@ class ShadowParser(object):
 		regular_entry_found = False
 		overlay_entry_found = False
 
+		switch_mode = can_switch_to_next_store(offset)
+		bitmap_check_result = self.check_bitmap(offset)
+
 		if offset in self.current_diff_area_index.keys(): # The offset was found.
 			pos = self.current_diff_area_index[offset]
 
@@ -1048,13 +1058,17 @@ class ShadowParser(object):
 
 					if not ignore_overlay_entries:
 						if len(new_offsets) == 0: # Fill the list with offsets.
-							if not self.check_bitmap(offset): # Use the original offsets.
+							if switch_mode == 1: # Use offsets from the next store.
+								new_offsets = lookup_in_next_store(offset, False)
+							elif not bitmap_check_result: # Use the original offsets.
 								for i in range(0, 32):
 									new_offsets.append(offset + i * 512)
-							elif can_switch_to_next_store(offset) == 1: # Use offsets from the next store.
-								new_offsets = lookup_in_next_store(offset, False)
-							else: # Use the dummy offsets.
-								new_offsets = [ None ] * 32
+							else:
+								if self.return_null_blocks: # Use the dummy offsets.
+									new_offsets = [ None ] * 32
+								else: # Use the original offsets.
+									for i in range(0, 32):
+										new_offsets.append(offset + i * 512)
 
 						cumulative_allocation_bitmap |= table_entry.allocation_bitmap # Extend the cumulative allocation bitmap.
 
@@ -1075,14 +1089,20 @@ class ShadowParser(object):
 							if (cumulative_allocation_bitmap >> i) & 1 == 0: # Overwrite an unused block.
 								new_offsets[i] = new_offset + i * 512
 
-		if forwarder_entry_found and (not regular_entry_found) and (not overlay_entry_found):
-			return lookup_in_next_store(forward_offset, True)
+		if forwarder_entry_found and not regular_entry_found:
+			if overlay_entry_found and not ignore_overlay_entries: # Offsets from the forward lookup should be used partially.
+				forward_offsets = lookup_in_next_store(forward_offset, True)
+				for i in range(0, 32):
+					if (cumulative_allocation_bitmap >> i) & 1 == 0: # Overwrite a block marked as unused.
+						new_offsets[i] = forward_offsets[i]
+			else: # Offsets from the forward lookup should be used entirely.
+				return lookup_in_next_store(forward_offset, True)
 
-		if (not do_forward_lookup) and offset in self.current_possible_null_targets and can_switch_to_next_store(offset) == 0: # This is a null target of a forwarder block.
+		if (not do_forward_lookup) and offset in self.current_possible_null_targets and switch_mode == 0 and self.return_null_blocks: # This is a null target of a forwarder block.
 			return [ None ] * 32
 
 		if (not forwarder_entry_found) and (not regular_entry_found) and (not overlay_entry_found) and \
-		  self.check_bitmap(offset) and can_switch_to_next_store(offset) == 0: # This is an unused block.
+		 bitmap_check_result and switch_mode == 0 and self.return_null_blocks: # This is an unused block.
 			return [ None ] * 32
 
 		if len(new_offsets) == 0: # Switch to the next store (or to the original volume).
@@ -1116,6 +1136,9 @@ class ShadowParser(object):
 	def seek(self, offset, whence = 0):
 		"""The seek() method for a virtual volume."""
 
+		if not self.shadow_selected:
+			raise ValueError('No shadow copy selected')
+
 		old_offset = self.current_offset
 
 		if whence == 0:
@@ -1138,12 +1161,18 @@ class ShadowParser(object):
 		return self.current_offset
 
 	def tell(self):
-		"""The tell() method for a virtual volume.."""
+		"""The tell() method for a virtual volume."""
+
+		if not self.shadow_selected:
+			raise ValueError('No shadow copy selected')
 
 		return self.current_offset
 
 	def read(self, size = None):
 		"""The read() method for a virtual volume."""
+
+		if not self.shadow_selected:
+			raise ValueError('No shadow copy selected')
 
 		volume_size = self.current_volume_size
 		if self.volume_size is not None and volume_size > self.volume_size:
@@ -1182,6 +1211,9 @@ class ShadowParser(object):
 
 	def close(self):
 		"""The close() method for a virtual volume. This method does nothing."""
+
+		if not self.shadow_selected:
+			raise ValueError('No shadow copy selected')
 
 		pass
 
