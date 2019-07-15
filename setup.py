@@ -7,7 +7,7 @@ setup(
 	license = 'GPLv3',
 	packages = [ 'dfir_ntfs' ],
 	provides = [ 'dfir_ntfs' ],
-	scripts = [ 'ntfs_parser' ],
+	scripts = [ 'ntfs_parser', 'vsc_mount' ],
 	description = 'An NTFS parser for digital forensics & incident response',
 	author = 'Maxim Suhanov',
 	author_email = 'no.spam.c@mail.ru',
