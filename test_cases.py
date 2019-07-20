@@ -12,7 +12,7 @@ import io
 import gzip
 import tarfile
 import pickle
-from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy
+from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy, PartitionTable
 
 TEST_DATA_DIR = 'test_data'
 
@@ -104,6 +104,18 @@ VOLUME_VSS_2003_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_2003_all_hashes.tx
 NTFS_LONE_WOLF = os.path.join(TEST_DATA_DIR, 'dc_lonewolf.raw') # This file is too large to be included into the repository. This is a raw image from the 2018 Lone Wolf Scenario.
 VOLUME_VSS_LONE_WOLF_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_lw_all_hashes.txt') # This file is too large to be included into the repository.
 VOLUME_VSS_LONE_WOLF_OFFSETS = os.path.join(TEST_DATA_DIR, 'vss_lw_offsets.txt')
+
+PT_GPT_3_GZ = os.path.join(TEST_DATA_DIR, 'gpt-512-3p.raw.gz')
+PT_GPT_0_GZ = os.path.join(TEST_DATA_DIR, 'gpt-512-0p.raw.gz')
+
+PT_MBR_0 = os.path.join(TEST_DATA_DIR, 'mbr-512-p0.bin')
+PT_MBR_1 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1.bin')
+PT_MBR_4 = os.path.join(TEST_DATA_DIR, 'mbr-512-p4.bin')
+PT_MBR_1_1_4k_GZ = os.path.join(TEST_DATA_DIR, 'mbr-4096-p1e1.bin.gz')
+PT_MBR_1_0_4k_GZ = os.path.join(TEST_DATA_DIR, 'mbr-4096-p1e0.bin.gz')
+PT_MBR_1_2_GZ_1 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1e2.bin.gz')
+PT_MBR_1_2_GZ_2 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1e2_2.bin.gz')
+PT_MBR_WIN = os.path.join(TEST_DATA_DIR, 'mbr-win-512.raw.tgz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -2786,5 +2798,351 @@ def test_shadow_parser_file_like():
 
 		if c == 25:
 			break
+
+	f.close()
+
+def test_gpt():
+	f = gzip.open(PT_GPT_0_GZ, 'rb')
+
+	gpt = PartitionTable.GPT(f, 512)
+	h = gpt.read_gpt_header()
+
+	assert h.location == 0 and '1156C30A-F330-47F5-BEC9-C85B0F186736' in str(h.disk_guid).upper() and h.number_of_partition_entries > 0 and h.size_of_partition_entry == 128
+
+	for part in gpt.read_gpt_partitions(h.partition_entry_lba, h.number_of_partition_entries, h.size_of_partition_entry, h.partition_entry_crc32):
+		assert False
+
+	f.close()
+
+	f = gzip.open(PT_GPT_3_GZ, 'rb')
+
+	gpt = PartitionTable.GPT(f, 512)
+	h = gpt.read_gpt_header()
+
+	assert h.location == 0 and '4A57F82F-3B54-45B7-9135-C1D4A9ADDF69' in str(h.disk_guid).upper() and h.number_of_partition_entries > 0 and h.size_of_partition_entry == 128
+
+	c = 0
+	for part in gpt.read_gpt_partitions(h.partition_entry_lba, h.number_of_partition_entries, h.size_of_partition_entry, h.partition_entry_crc32):
+		if c == 0:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '0C4A2A68-C2C3-441A-8757-1F888ED2715D' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 34 and part.ending_lba == 64 and part.attributes == 0
+		elif c == 1:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '127D7584-B1A0-48D7-9444-B63BF6AC3FCB' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 65 and part.ending_lba == 128 and part.attributes == 0
+		elif c == 2:
+			assert part.partition_type_guid == PartitionTable.EFI_SYSTEM_PARTITION_GUID and '8BD51A24-3053-4849-B987-E5BB05EAFE51' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 129 and part.ending_lba == 2014 and part.attributes == 0 and part.partition_name == 'EFI System'
+
+		c += 1
+
+	assert c == 3
+
+	f.seek(0)
+	d = bytearray(f.read())
+	f.close()
+
+	d[512 + 16] = 0
+	d[512 + 17] = 0
+	d[512 + 18] = 1
+	d[512 + 19] = 2
+
+	f = io.BytesIO(d)
+	gpt = PartitionTable.GPT(f, 512)
+	h = gpt.read_gpt_header()
+
+	assert h.location == 2 and '4A57F82F-3B54-45B7-9135-C1D4A9ADDF69' in str(h.disk_guid).upper() and h.number_of_partition_entries > 0 and h.size_of_partition_entry == 128
+
+	c = 0
+	for part in gpt.read_gpt_partitions(h.partition_entry_lba, h.number_of_partition_entries, h.size_of_partition_entry, h.partition_entry_crc32):
+		if c == 0:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '0C4A2A68-C2C3-441A-8757-1F888ED2715D' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 34 and part.ending_lba == 64 and part.attributes == 0
+		elif c == 1:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '127D7584-B1A0-48D7-9444-B63BF6AC3FCB' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 65 and part.ending_lba == 128 and part.attributes == 0
+		elif c == 2:
+			assert part.partition_type_guid == PartitionTable.EFI_SYSTEM_PARTITION_GUID and '8BD51A24-3053-4849-B987-E5BB05EAFE51' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 129 and part.ending_lba == 2014 and part.attributes == 0 and part.partition_name == 'EFI System'
+
+		c += 1
+
+	assert c == 3
+
+	f.close()
+
+	d[512 + 32] = 0
+	d[512 + 33] = 0
+	d[512 + 34] = 0
+	d[512 + 35] = 0
+	d[512 + 36] = 0
+	d[512 + 37] = 0
+	d[512 + 38] = 0
+	d[512 + 39] = 1
+
+	f = io.BytesIO(d)
+	gpt = PartitionTable.GPT(f, 512)
+	h = gpt.read_gpt_header()
+
+	assert h.location == 1 and '4A57F82F-3B54-45B7-9135-C1D4A9ADDF69' in str(h.disk_guid).upper() and h.number_of_partition_entries > 0 and h.size_of_partition_entry == 128
+
+	c = 0
+	for part in gpt.read_gpt_partitions(h.partition_entry_lba, h.number_of_partition_entries, h.size_of_partition_entry, h.partition_entry_crc32):
+		if c == 0:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '0C4A2A68-C2C3-441A-8757-1F888ED2715D' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 34 and part.ending_lba == 64 and part.attributes == 0
+		elif c == 1:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '127D7584-B1A0-48D7-9444-B63BF6AC3FCB' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 65 and part.ending_lba == 128 and part.attributes == 0
+		elif c == 2:
+			assert part.partition_type_guid == PartitionTable.EFI_SYSTEM_PARTITION_GUID and '8BD51A24-3053-4849-B987-E5BB05EAFE51' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 129 and part.ending_lba == 2014 and part.attributes == 0 and part.partition_name == 'EFI System'
+
+		c += 1
+
+	assert c == 3
+
+	f.close()
+
+	d += b'\x00' * 1024
+
+	f = io.BytesIO(d)
+	gpt = PartitionTable.GPT(f, 512)
+
+	with pytest.raises(ValueError):
+		h = gpt.read_gpt_header()
+
+	f.close()
+
+	f = gzip.open(PT_GPT_3_GZ, 'rb')
+	d = bytearray(f.read())
+	f.close()
+
+	d[1024 + 0] = 12
+	d[1024 + 1] = 12
+	d[1024 + 2] = 12
+	d[1024 + 3] = 12
+
+	f = io.BytesIO(d)
+	gpt = PartitionTable.GPT(f, 512)
+	h = gpt.read_gpt_header()
+
+	assert h.location == 2 and '4A57F82F-3B54-45B7-9135-C1D4A9ADDF69' in str(h.disk_guid).upper() and h.number_of_partition_entries > 0 and h.size_of_partition_entry == 128
+
+	c = 0
+	for part in gpt.read_gpt_partitions(h.partition_entry_lba, h.number_of_partition_entries, h.size_of_partition_entry, h.partition_entry_crc32):
+		if c == 0:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '0C4A2A68-C2C3-441A-8757-1F888ED2715D' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 34 and part.ending_lba == 64 and part.attributes == 0
+		elif c == 1:
+			assert '0FC63DAF-8483-4772-8E79-3D69D8477DE4' in str(part.partition_type_guid).upper() and '127D7584-B1A0-48D7-9444-B63BF6AC3FCB' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 65 and part.ending_lba == 128 and part.attributes == 0
+		elif c == 2:
+			assert part.partition_type_guid == PartitionTable.EFI_SYSTEM_PARTITION_GUID and '8BD51A24-3053-4849-B987-E5BB05EAFE51' in str(part.unique_partition_guid).upper()
+			assert part.starting_lba == 129 and part.ending_lba == 2014 and part.attributes == 0 and part.partition_name == 'EFI System'
+
+		c += 1
+
+	assert c == 3
+
+
+def test_mbr():
+	f = open(PT_MBR_0, 'rb')
+
+	mbr = PartitionTable.MBR(f, 512)
+
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0xdd23224b
+
+	for i in mbr.read_mbr_partitions():
+		assert False
+
+	f.close()
+
+	f = open(PT_MBR_1, 'rb')
+
+	mbr = PartitionTable.MBR(f, 512)
+
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0xf22af19f
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		assert i.starting_lba == 1 and i.size_in_lba == 2047 and i.os_type == 0x83 and i.boot_indicator == 0
+		c += 1
+
+	assert c == 1
+
+	f.close()
+
+	f = open(PT_MBR_4, 'rb')
+
+	mbr = PartitionTable.MBR(f, 512)
+
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0x4f781bc6
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 1 and i.size_in_lba == 2 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 3 and i.size_in_lba == 2 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 2:
+			assert i.starting_lba == 5 and i.size_in_lba == 2 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 3:
+			assert i.starting_lba == 7 and i.size_in_lba == 2041 and i.os_type == 0x8e and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 4
+
+	f.close()
+
+	f = gzip.open(PT_MBR_1_1_4k_GZ, 'rb')
+
+	mbr = PartitionTable.MBR(f, 4096)
+
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0xce1e0256
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 3 and i.size_in_lba == 2 and i.os_type == 0x8e and i.boot_indicator == 0x80
+		elif c == 1:
+			assert i.starting_lba == 8 and i.size_in_lba == 4 and i.os_type == 5 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	c = 0
+	for i in mbr.read_ebr_partitions():
+		assert i.starting_lba == 9 and i.size_in_lba == 2 and i.os_type == 0x83 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 1
+
+	f.close()
+
+	f = gzip.open(PT_MBR_1_0_4k_GZ, 'rb')
+
+	mbr = PartitionTable.MBR(f, 4096)
+
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0xee042850
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 1 and i.size_in_lba == 125 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 126 and i.size_in_lba == 130 and i.os_type == 5 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	for i in mbr.read_ebr_partitions():
+		assert False
+
+	f.close()
+
+	f = gzip.open(PT_MBR_1_2_GZ_1, 'rb')
+
+	mbr = PartitionTable.MBR(f, 512)
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0x0b4a5fbe
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 1 and i.size_in_lba == 1024 and i.os_type == 5 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 1025 and i.size_in_lba == 1023 and i.os_type == 0x83 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	c = 0
+	for i in mbr.read_ebr_partitions():
+		if c == 0:
+			assert i.starting_lba == 2 and i.size_in_lba == 511 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 514 and i.size_in_lba == 511 and i.os_type == 0x83 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	f.close()
+
+	f = gzip.open(PT_MBR_1_2_GZ_2, 'rb')
+
+	mbr = PartitionTable.MBR(f, 512)
+	h = mbr.read_mbr()
+	assert (not h.is_boot_code_present) and h.disk_signature == 0x896fdd09
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 1 and i.size_in_lba == 64 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 65 and i.size_in_lba == 1983 and i.os_type == 5 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	c = 0
+	for i in mbr.read_ebr_partitions():
+		if c == 0:
+			assert i.starting_lba == 66 and i.size_in_lba == 35 and i.os_type == 0x83 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 102 and i.size_in_lba == 1946 and i.os_type == 0x8e and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 2
+
+	f.close()
+
+	f = tarfile.open(PT_MBR_WIN, 'r').extractfile('mbr-win-512.raw')
+
+	mbr = PartitionTable.MBR(f, 512)
+	h = mbr.read_mbr()
+	assert h.is_boot_code_present and h.disk_signature == 0x882edd52
+
+	c = 0
+	for i in mbr.read_mbr_partitions():
+		if c == 0:
+			assert i.starting_lba == 128 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 16512 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 2:
+			assert i.starting_lba == 32896 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 3:
+			assert i.starting_lba == 49280 and i.size_in_lba == 471040 and i.os_type == 5 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 4
+
+	c = 0
+	for i in mbr.read_ebr_partitions():
+		if c == 0:
+			assert i.starting_lba == 49408 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 1:
+			assert i.starting_lba == 65920 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 2:
+			assert i.starting_lba == 82432 and i.size_in_lba == 16384 and i.os_type == 6 and i.boot_indicator == 0
+		elif c == 3:
+			assert i.starting_lba == 98944 and i.size_in_lba == 417792 and i.os_type == 6 and i.boot_indicator == 0
+
+		c += 1
+
+	assert c == 4
 
 	f.close()

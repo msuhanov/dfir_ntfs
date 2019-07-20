@@ -8,7 +8,7 @@ dfir_ntfs: an NTFS parser for digital forensics & incident response
 
 2. Installation
 
-# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0-beta17.tar.gz
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0-beta18.tar.gz
 
 3. License
 
