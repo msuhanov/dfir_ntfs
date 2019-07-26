@@ -968,7 +968,7 @@ class ShadowParser(object):
 
 					for i in range(0, 32):
 						offsets.append(offset + i * 512)
-				elif self.return_null_blocks: # Return the dummy offsets.
+				elif self.return_null_blocks and not do_forward_lookup: # Return the dummy offsets.
 					offsets = [ None ] * 32
 				else: # Return the original offsets of data blocks.
 					offsets = []
@@ -1098,7 +1098,8 @@ class ShadowParser(object):
 			else: # Offsets from the forward lookup should be used entirely.
 				return lookup_in_next_store(forward_offset, True)
 
-		if (not do_forward_lookup) and offset in self.current_possible_null_targets and switch_mode == 0 and self.return_null_blocks: # This is a null target of a forwarder block.
+		if (not regular_entry_found) and (not do_forward_lookup) and offset in self.current_possible_null_targets and \
+		 switch_mode == 0 and self.return_null_blocks: # This is a null target of a forwarder block.
 			return [ None ] * 32
 
 		if (not forwarder_entry_found) and (not regular_entry_found) and (not overlay_entry_found) and \

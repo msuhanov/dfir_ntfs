@@ -234,15 +234,16 @@ if mode == '--mount':
 
 	mount_point = sys.argv[5]
 
-	if not os.path.isfile(volume_path):
-		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
-		sys.exit(255)
-
 	if not os.path.isdir(mount_point):
 		print('Mount point does not exist (or not a directory): {}'.format(mount_point), file = sys.stderr)
 		sys.exit(255)
 
-	file_system = VSCFS(volume_path, volume_offset, stack_position)
+	try:
+		file_system = VSCFS(volume_path, volume_offset, stack_position)
+	except (OSError, IOError):
+		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
+		sys.exit(255)
+
 	fuse_options = set(llfuse.default_options)
 	llfuse.init(file_system, mount_point, fuse_options)
 
@@ -266,11 +267,11 @@ elif mode == '--list':
 		print_usage()
 		sys.exit(0)
 
-	if not os.path.isfile(volume_path):
+	try:
+		volume_file = open(volume_path, 'rb')
+	except (OSError, IOError):
 		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
 		sys.exit(255)
-
-	volume_file = open(volume_path, 'rb')
 
 	try:
 		vss = ShadowCopy.ShadowParser(volume_file, volume_offset)
