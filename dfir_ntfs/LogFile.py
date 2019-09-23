@@ -1664,7 +1664,12 @@ class NTFSLogRecord(object):
 
 		i = 0
 		while i < self.get_lcns_to_follow():
-			lcn = struct.unpack('<q', self.buf[32 + i * 8 : 40 + i * 8])[0]
+			lcn_buf = self.buf[32 + i * 8 : 40 + i * 8]
+			if len(lcn_buf) != 8:
+				raise ClientException('Invalid (truncated) log record length: {}'.format(len(self.buf)))
+
+			lcn = struct.unpack('<q', lcn_buf)[0]
+
 			lcns.append(lcn)
 
 			i += 1

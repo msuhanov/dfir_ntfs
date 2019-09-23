@@ -402,8 +402,12 @@ def process_log():
 			output_lines.append('Unknown offset in target')
 
 		lcns = []
-		for lcn in log_record.get_lcns_for_page():
-			lcns.append(str(lcn))
+		try:
+			for lcn in log_record.get_lcns_for_page():
+				lcns.append(str(lcn))
+		except LogFile.ClientException:
+			output_lines.append('Warning: truncated page')
+			return '\n'.join(output_lines)
 
 		if len(lcns) > 0:
 			output_lines.append('LCN(s): {}'.format(' '.join(lcns)))
