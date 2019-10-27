@@ -1,3 +1,11 @@
+Version: 1.0.0
+
+Stable release.
+
+Add a check for file system signatures when parsing shadow copies.
+
+---
+
 Version: 1.0.0-beta20
 
 Minor update.

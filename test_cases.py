@@ -2801,6 +2801,22 @@ def test_shadow_parser_file_like():
 
 	f.close()
 
+def test_shadow_invalid_offsets():
+	f = tarfile.open(VOLUME_VSS_10, 'r').extractfile('vss_10.raw')
+
+	with pytest.raises(ShadowCopy.InvalidVolume):
+		vss = ShadowCopy.ShadowParser(f, 0)
+
+	with pytest.raises(ShadowCopy.InvalidVolume):
+		vss = ShadowCopy.ShadowParser(f, 1)
+
+	with pytest.raises(ShadowCopy.InvalidVolume):
+		vss = ShadowCopy.ShadowParser(f, 2049 * 512)
+
+	vss = ShadowCopy.ShadowParser(f, 2048 * 512)
+
+	f.close()
+
 def test_gpt():
 	f = gzip.open(PT_GPT_0_GZ, 'rb')
 

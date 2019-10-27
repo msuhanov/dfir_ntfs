@@ -277,6 +277,8 @@ elif mode == '--list':
 		vss = ShadowCopy.ShadowParser(volume_file, volume_offset)
 	except ShadowCopy.ShadowCopiesDisabledException:
 		print('Shadow copies are disabled')
+	except ShadowCopy.InvalidVolume:
+		print('Not a valid volume')
 	else:
 		print('Shadow copies are enabled')
 		for sc in vss.shadows():

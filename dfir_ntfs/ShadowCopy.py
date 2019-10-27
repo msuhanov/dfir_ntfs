@@ -67,6 +67,15 @@ class ShadowCopyException(Exception):
 	def __str__(self):
 		return repr(self._value)
 
+class InvalidVolume(Exception):
+	"""This is another top-level exception for this module: the volume is invalid (not supported)."""
+
+	def __init__(self, value):
+		self._value = value
+
+	def __str__(self):
+		return repr(self._value)
+
 class ShadowCopyNotFoundException(ShadowCopyException):
 	"""This exception is raised when a shadow copy is not found."""
 
@@ -161,6 +170,9 @@ class StartBlock(ShadowBlock):
 			raise StartBlockException('Invalid volume start data size: {} bytes'.format(len(volume_start_buf)))
 
 		self.volume_start_data = volume_start_buf
+		if not self.is_supported_volume():
+			raise InvalidVolume('No supported file system signature found')
+
 		super(StartBlock, self).__init__(self.volume_start_data[self.start_block_offset : ])
 
 		if self.get_offset_1() != self.start_block_offset:
@@ -238,6 +250,12 @@ class StartBlock(ShadowBlock):
 		"""Get and return protection flags (as an integer)."""
 
 		return struct.unpack('<L', self.volume_start_data[7804 : 7808])[0]
+
+	def is_supported_volume(self):
+		"""Check if the volume contains a supported file system signature (NTFS, ReFS)."""
+
+		signature = self.volume_start_data[3 : 7]
+		return signature in [ b'NTFS', b'ReFS' ] # This is a relaxed check.
 
 	def __str__(self):
 		return 'StartBlock'
