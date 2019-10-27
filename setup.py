@@ -15,6 +15,6 @@ setup(
 		'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
 		'Operating System :: OS Independent',
 		'Programming Language :: Python :: 3',
-		'Development Status :: 4 - Beta'
+		'Development Status :: 5 - Production/Stable'
 	]
 )
