@@ -371,7 +371,7 @@ class ControlBlockItem2(object):
 		return struct.unpack('<Q', self.item_raw[40 : 48])[0]
 
 	def get_timestamp(self):
-		"""Get and return commit timestamp (as an integer)."""
+		"""Get and return the commit timestamp."""
 
 		timestamp = struct.unpack('<Q', self.item_raw[48 : 56])[0]
 		return DecodeFiletime(timestamp)

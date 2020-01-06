@@ -1,3 +1,10 @@
+Version: 1.0.1
+
+Handle invalid MACE timestamps gracefully.
+Minor changes.
+
+---
+
 Version: 1.0.0
 
 Stable release.

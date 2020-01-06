@@ -4,13 +4,26 @@ dfir_ntfs: an NTFS parser for digital forensics & incident response
 1. Project goals
 
 - Parse $MFT, $UsnJrnl:$J, $LogFile files, extract as much data as possible.
-- Parse volumes and volume images.
+- Parse volumes, volume images, and volume shadow copies.
 
 2. Installation
 
-# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.0.tar.gz
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.1.tar.gz
 
-3. License
+3. Timestamps
+
+All timestamps reported by the tools are in UTC.
+
+The MACE notation is used:
+- modified (M),
+- last accessed (A),
+- created (C),
+- $MFT entry modified (E).
+
+In the WSL set of timestamps:
+- inode changed (CH).
+
+4. License
 
 This project is made available under the terms of the GNU GPL, version 3.
 See the 'License' file.

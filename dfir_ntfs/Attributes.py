@@ -130,15 +130,27 @@ def ResolveFileAttributes(FileAttributes):
 
 	return ' | '.join(str_list)
 
-def DecodeFiletime(Timestamp):
+def DecodeFiletime(Timestamp, DoNotRaise = True):
 	"""Decode the FILETIME timestamp and return the datetime object."""
 
-	return datetime.datetime(1601, 1, 1) + datetime.timedelta(microseconds = Timestamp / 10)
+	try:
+		return datetime.datetime(1601, 1, 1) + datetime.timedelta(microseconds = Timestamp / 10)
+	except Exception: # Allow a caller to handle an invalid timestamp.
+		if not DoNotRaise:
+			raise
 
-def DecodeGUIDTime(Timestamp):
+		return
+
+def DecodeGUIDTime(Timestamp, DoNotRaise = True):
 	"""Decode the GUID timestamp and return the datetime object."""
 
-	return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds = Timestamp / 10)
+	try:
+		return datetime.datetime(1582, 10, 15) + datetime.timedelta(microseconds = Timestamp / 10)
+	except Exception: # Allow a caller to handle an invalid timestamp.
+		if not DoNotRaise:
+			raise
+
+		return
 
 def VerifyAndUnprotectIndexSectors(Buffer):
 	"""Apply an update sequence array (USA) to multiple sectors (as a bytearray object), verify and return the resulting buffer. Only an index buffer can be used as input data.
