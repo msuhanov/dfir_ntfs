@@ -117,6 +117,8 @@ PT_MBR_1_2_GZ_1 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1e2.bin.gz')
 PT_MBR_1_2_GZ_2 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1e2_2.bin.gz')
 PT_MBR_WIN = os.path.join(TEST_DATA_DIR, 'mbr-win-512.raw.tgz')
 
+FCB = os.path.join(TEST_DATA_DIR, 'fcb.bin')
+
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
 		lxattrb_blob = f.read()
@@ -3160,5 +3162,38 @@ def test_mbr():
 		c += 1
 
 	assert c == 4
+
+	f.close()
+
+def test_fcb_carver():
+	f = open(FCB, 'rb')
+	fcb = f.read()
+	f.close()
+
+	f = io.BytesIO()
+	f.write(fcb)
+
+	carver = MFT.MetadataCarver(f)
+
+	with pytest.raises(ValueError):
+		for i in carver.carve_fcb_timestamps():
+			assert False
+
+	f.close()
+
+	f = io.BytesIO()
+
+	for i in range(200):
+		f.write(fcb)
+
+	carver = MFT.MetadataCarver(f)
+	c = 0
+	for i in carver.carve_fcb_timestamps():
+		assert i.positions[0] == c * 512 + 16
+		assert i.positions[1] == 128 and i.positions[2] == 192
+
+		c += 1
+
+	assert c == 200
 
 	f.close()

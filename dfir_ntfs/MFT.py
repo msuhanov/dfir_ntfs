@@ -5,6 +5,7 @@
 
 from . import Attributes, BootSector
 import struct
+from collections import namedtuple
 
 FILE_RECORD_SEGMENT_SIZES_SUPPORTED = [ 1024, 4096 ]
 MULTI_SECTOR_HEADER_SIGNATURE_GOOD = b'FILE'
@@ -37,6 +38,9 @@ FILE_NUMBER_BADCLUS = 8
 FILE_NUMBER_SECURE = 9
 FILE_NUMBER_UPCASE = 10
 FILE_NUMBER_EXTEND = 11
+
+# Constants from in-memory structures:
+FILE_CONTROL_BLOCK_SIGNATURE = b'\x02\x07'
 
 class MasterFileTableException(Exception):
 	"""This is a top-level exception for this module."""
@@ -844,7 +848,7 @@ class MasterFileTableParser(object):
 	"""A cache of child file record segments."""
 
 	statistics = None
-	"""A tuple: (total number of file record segments, number of child in-use file record segments)"""
+	"""A tuple: (total number of file record segments, number of child in-use file record segments)."""
 
 	first_pass_done = None
 	"""A flag to show if we executed the first pass."""
@@ -1501,3 +1505,185 @@ class FileSystemParser(FragmentedFile):
 
 	def __str__(self):
 		return 'FileSystemParser'
+
+FCBTimestamps = namedtuple('FCBTimestamps', [ 'possible_file_reference', 'mtime', 'atime', 'ctime', 'etime', 'atime_real', 'positions' ])
+
+class MetadataCarver(object):
+	"""This class is used to carve $MFT-related metadata structures from a raw memory image (or a similar source)."""
+
+	file_object = None
+	"""A file object for a raw image."""
+
+	file_size = None
+	"""A size of a raw image."""
+
+	def __init__(self, file_object):
+		"""Create a MetadataCarver object from a file object for a raw image."""
+
+		self.file_object = file_object
+		self.file_object.seek(0, 2)
+		self.file_size = self.file_object.tell()
+		self.file_object.seek(0)
+
+		self.filetime_min = 123000000000000000 # 10 Oct 1990.
+		self.filetime_max = 135000000000000000 # 19 Oct 2028.
+
+		self.guessed_pos_duplicated_information = None
+		self.guessed_pos_atime_real = None
+		self.guessed_file_reference_pos = 8
+
+	def carve_fcb_timestamps(self):
+		"""Locate and yield additional metadata items (FCBTimestamps) from every file control block (FCB) found in a raw image."""
+
+		def carve_fcb_timestamps_internal():
+			# Process every memory page (4096 bytes) in the loop below.
+			file_pos = 0
+			while file_pos < self.file_size:
+				self.file_object.seek(file_pos)
+				page = self.file_object.read(4096)
+
+				if len(page) < 512: # Truncated data.
+					break
+
+				# For a given memory page, scan for file control blocks (and skip odd offsets).
+				fcb_pos = 0
+				while fcb_pos < len(page):
+					fcb_signature = page[fcb_pos : fcb_pos + 2]
+					if fcb_signature != FILE_CONTROL_BLOCK_SIGNATURE:
+						fcb_pos += 2
+						continue
+
+					found_duplicated_information = False
+					relative_pos_duplicated_information = None
+					found_atime_real = False
+					relative_pos_atime_real = None
+
+					# In a given candidate file control block, scan for additional metadata.
+
+					if self.guessed_pos_duplicated_information is None: # The location of duplicated information is unknown.
+						pos = 0
+						while pos < len(page) and pos < 144: # Search for four valid FILETIME timestamps in some reasonable amount of data.
+							buf_cur = page[fcb_pos + pos : fcb_pos + pos + 32]
+							if len(buf_cur) != 32: # Truncated data.
+								break
+
+							duplicated_information_timestamps = struct.unpack('<QQQQ', buf_cur)
+
+							found = True
+							for ts in duplicated_information_timestamps:
+								if ts < self.filetime_min or ts > self.filetime_max:
+									found = False
+									break
+
+							if found:
+								found_duplicated_information = True
+								relative_pos_duplicated_information = pos
+								break
+
+							pos += 2
+
+					else: # Try the known location.
+						buf_cur = page[fcb_pos + self.guessed_pos_duplicated_information : fcb_pos + self.guessed_pos_duplicated_information + 32]
+						if len(buf_cur) != 32: # Truncated data.
+							break
+
+						duplicated_information_timestamps = struct.unpack('<QQQQ', buf_cur)
+
+						found = True
+						for ts in duplicated_information_timestamps:
+							if ts < self.filetime_min or ts > self.filetime_max:
+								found = False
+								break
+
+						if found:
+							found_duplicated_information = True
+							relative_pos_duplicated_information = self.guessed_pos_duplicated_information
+
+					if found_duplicated_information:
+						ctime, mtime, etime, atime = duplicated_information_timestamps
+
+						# Decode four timestamps found.
+						ctime = Attributes.DecodeFiletime(ctime)
+						mtime = Attributes.DecodeFiletime(mtime)
+						etime = Attributes.DecodeFiletime(etime)
+						atime = Attributes.DecodeFiletime(atime)
+
+						# Now, let's find the "real" (in-memory) last access timestamp.
+
+						if self.guessed_pos_atime_real is None: # The location of that timestamp is unknown.
+							pos += 56 # Skip the duplicated information fields.
+
+							while pos < len(page) and pos < 208: # Scan some reasonable amount of data.
+								buf_cur = page[fcb_pos + pos : fcb_pos + pos + 8]
+								if len(buf_cur) != 8: # Truncated data.
+									break
+
+								atime_real = struct.unpack('<Q', buf_cur)[0]
+								if atime_real >= self.filetime_min and atime_real <= self.filetime_max:
+									found_atime_real = True
+									relative_pos_atime_real= pos
+									atime_real = Attributes.DecodeFiletime(atime_real) # Decode the timestamp.
+									break
+
+								pos += 2
+
+						else: # Try the known location.
+							buf_cur = page[fcb_pos + self.guessed_pos_atime_real : fcb_pos + self.guessed_pos_atime_real + 8]
+							if len(buf_cur) == 8:
+								atime_real = struct.unpack('<Q', buf_cur)[0]
+								if atime_real >= self.filetime_min and atime_real <= self.filetime_max:
+									found_atime_real = True
+									relative_pos_atime_real = self.guessed_pos_atime_real
+									atime_real = Attributes.DecodeFiletime(atime_real) # Decode the timestamp.
+
+					if found_duplicated_information and found_atime_real:
+						# Now, extact a possible file record segment reference.
+						possible_file_reference_raw = page[fcb_pos + self.guessed_file_reference_pos : fcb_pos + self.guessed_file_reference_pos + 8]
+						possible_file_reference = struct.unpack('<Q', possible_file_reference_raw)[0]
+
+						# Build a named tuple and return it.
+						yield FCBTimestamps(possible_file_reference = possible_file_reference, mtime = mtime, atime = atime, ctime = ctime, etime = etime, atime_real = atime_real, positions = (file_pos + fcb_pos, relative_pos_duplicated_information, relative_pos_atime_real))
+
+						fcb_pos += relative_pos_atime_real + 8 # Skip the current file control block and go ahead.
+						continue
+
+					fcb_pos += 2
+
+				file_pos += 4096
+
+
+		pos_dict_dup = {}
+		pos_dict_a = {}
+		c = 0
+
+		for fcb_timestamps in carve_fcb_timestamps_internal():
+			__, pos_dup, pos_a = fcb_timestamps.positions
+
+			if pos_dup in pos_dict_dup.keys():
+				pos_dict_dup[pos_dup] += 1
+			else:
+				pos_dict_dup[pos_dup] = 1
+
+			if pos_a in pos_dict_a.keys():
+				pos_dict_a[pos_a] += 1
+			else:
+				pos_dict_a[pos_a] = 1
+
+			c += 1
+			if c >= 100: # Got enough candidate file control blocks.
+				break
+
+		if c < 25:
+			raise ValueError('Not enough candidate file control blocks collected from input data to guess the offsets of their fields')
+
+		self.guessed_pos_duplicated_information = max(pos_dict_dup, key = pos_dict_dup.get)
+		self.guessed_pos_atime_real = max(pos_dict_a, key = pos_dict_a.get)
+
+		if pos_dict_dup[self.guessed_pos_duplicated_information] < 20 or pos_dict_a[self.guessed_pos_atime_real] < 20:
+			raise ValueError('Cannot guess the offsets in the file control block structure (inconclusive data)')
+
+		for fcb_timestamps in carve_fcb_timestamps_internal():
+			yield fcb_timestamps
+
+	def __str__(self):
+		return 'MetadataCarver'

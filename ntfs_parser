@@ -844,6 +844,14 @@ def process_all_mft():
 			input_file = MFT.FileSystemParser(vss, 0)
 			process_mft('shadow copy {}'.format(shadow_copy.stack_position))
 
+def process_mem():
+	carver = MFT.MetadataCarver(input_file)
+
+	csv_writer.writerow(['Possible MFT reference number', 'M timestamp', 'A timestamp', 'C timestamp', 'E timestamp', 'A timestamp (real)'])
+
+	for fcb_timestamps in carver.carve_fcb_timestamps():
+		csv_writer.writerow([fcb_timestamps.possible_file_reference, fcb_timestamps.mtime, fcb_timestamps.atime, fcb_timestamps.ctime, fcb_timestamps.etime, fcb_timestamps.atime_real])
+
 def print_usage():
 	print('Extract information from NTFS metadata files, volumes, and shadow copies')
 	print('')
@@ -853,17 +861,18 @@ def print_usage():
 	print(' ntfs_parser --log <input file ($MFT)> <input file ($LogFile)> <output file (TXT)>')
 	print(' ntfs_parser --indx <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
 	print(' ntfs_parser --all-mft <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
+	print(' ntfs_parser --mem <input file (raw memory image)> <output file (CSV)>')
 
 if len(sys.argv) != 4 and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mft', '--usn', '--log', '--indx', '--all-mft' ]:
+if mode not in [ '--mft', '--usn', '--log', '--indx', '--all-mft', '--mem' ]:
 	print_usage()
 	sys.exit(0)
 
-if mode in [ '--mft' ] and len(sys.argv) != 4:
+if mode in [ '--mft', '--mem' ] and len(sys.argv) != 4:
 	print_usage()
 	sys.exit(0)
 
@@ -914,6 +923,14 @@ elif mode == '--all-mft':
 	csv_writer = csv.writer(output_file, dialect = 'excel')
 
 	process_all_mft()
+
+	input_file_volume.close()
+elif mode == '--mem':
+	input_file = open(sys.argv[2], 'rb')
+	output_file = open(sys.argv[3], 'w', newline = '', encoding = 'utf-8')
+	csv_writer = csv.writer(output_file, dialect = 'excel')
+
+	process_mem()
 
 input_file.close()
 output_file.close()

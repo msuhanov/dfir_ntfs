@@ -1,3 +1,10 @@
+Version: 1.0.2
+
+Add a class and implement a mode to carve $MFT-related metadata from raw memory images.
+Minor changes.
+
+---
+
 Version: 1.0.1
 
 Handle invalid MACE timestamps gracefully.

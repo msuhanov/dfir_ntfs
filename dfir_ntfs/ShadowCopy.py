@@ -7,6 +7,7 @@ import struct
 import uuid
 import datetime
 from collections import namedtuple
+from .Attributes import DecodeFiletime
 
 VSP_DIFF_AREA_FILE_GUID = b'\x6B\x87\x08\x38\x76\xC1\x48\x4E\xB7\xAE\x04\x04\x6E\x6C\xC7\x52' # As raw bytes.
 
@@ -52,11 +53,6 @@ DIFF_AREA_TABLE_ENTRY_UNKNOWN_80 = 0x80 # A regular entry with an unknown flag.
 ShadowCopyInformation = namedtuple('ShadowCopyInformation', [ 'stack_position', 'timestamp', 'store_guid', 'volume_size' ])
 LocationDescriptionItems = namedtuple('LocationDescriptionItems', [ 'volume_offset', 'store_offset', 'size' ])
 OnDiskTableEntry = namedtuple('OnDiskTableEntry', [ 'original_volume_offset', 'data_block_offset_in_store', 'data_block_volume_offset', 'flags', 'allocation_bitmap' ])
-
-def DecodeFiletime(Timestamp):
-	"""Decode the FILETIME timestamp and return the datetime object."""
-
-	return datetime.datetime(1601, 1, 1) + datetime.timedelta(microseconds = Timestamp / 10)
 
 class ShadowCopyException(Exception):
 	"""This is a top-level exception for this module."""
