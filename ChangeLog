@@ -1,3 +1,9 @@
+Version: 1.0.3
+
+Add a method to handle storage reserve IDs.
+
+---
+
 Version: 1.0.2
 
 Add a class and implement a mode to carve $MFT-related metadata from raw memory images.

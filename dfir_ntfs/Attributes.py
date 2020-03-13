@@ -269,6 +269,11 @@ class StandardInformation(GenericAttribute):
 
 		return self.get_extra_flags() & EXTRA_FLAG_UNKNOWN_NAME_1 > 0
 
+	def get_storage_reserve_id(self):
+		"""Get and return the storage reserve ID."""
+
+		return (self.get_extra_flags() >> 8) & 0xFF
+
 	def get_class_id(self):
 		"""Get and return the class ID for this file."""
 
@@ -313,6 +318,7 @@ class StandardInformation(GenericAttribute):
 		print(' File attributes: {}'.format(hex(self.get_file_attributes())))
 		print(' Current version, maximum versions: {}, {}'.format(self.get_version_number(), self.get_maximum_versions()))
 		print(' Is case sensitive: {}'.format(self.is_case_sensitive()))
+		print(' Storage reserve ID: {}'.format(self.get_storage_reserve_id()))
 		print(' Class ID, owner ID, security ID: {}, {}, {}'.format(self.get_class_id(), self.get_owner_id(), self.get_security_id()))
 		print(' Quota charged: {}'.format(self.get_quota_charged()))
 		print(' Update sequence number: {}'.format(self.get_usn()))
