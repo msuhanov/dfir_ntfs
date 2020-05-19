@@ -1,3 +1,10 @@
+Version: 1.0.4
+
+Add a method to handle known folder information.
+Fix a method to handle storage reserve IDs.
+
+---
+
 Version: 1.0.3
 
 Add a method to handle storage reserve IDs.

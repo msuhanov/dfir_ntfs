@@ -106,6 +106,15 @@ FILE_ATTR_LIST = {
 # Extra flags for the $STANDARD_INFORMATION attribute:
 EXTRA_FLAG_UNKNOWN_NAME_1 = 0x1 # Is case sensitive.
 
+# Known folder tags for the $STANDARD_INFORMATION attribute:
+TAG_DOWNLOADS_AND_LOCALAPPDATA = 0
+TAG_DESKTOP = 1
+TAG_DOCUMENTS = 2
+TAG_MUSIC = 4
+TAG_PICTURES = 5
+TAG_VIDEOS = 6
+# (3 and 7 seem to be unused. 0 also means an absent tag.)
+
 # Flags for the index header:
 INDEX_NODE = 0x01 # Is an intermediate node.
 
@@ -272,7 +281,12 @@ class StandardInformation(GenericAttribute):
 	def get_storage_reserve_id(self):
 		"""Get and return the storage reserve ID."""
 
-		return (self.get_extra_flags() >> 8) & 0xFF
+		return (self.get_extra_flags() >> 8) & 0xF
+
+	def get_known_folder_information(self):
+		"""Get and return the known folder information (tag)."""
+
+		return (self.get_extra_flags() & 0xE) >> 1
 
 	def get_class_id(self):
 		"""Get and return the class ID for this file."""
@@ -319,6 +333,7 @@ class StandardInformation(GenericAttribute):
 		print(' Current version, maximum versions: {}, {}'.format(self.get_version_number(), self.get_maximum_versions()))
 		print(' Is case sensitive: {}'.format(self.is_case_sensitive()))
 		print(' Storage reserve ID: {}'.format(self.get_storage_reserve_id()))
+		print(' Known folder tag: {}'.format(self.get_known_folder_information()))
 		print(' Class ID, owner ID, security ID: {}, {}, {}'.format(self.get_class_id(), self.get_owner_id(), self.get_security_id()))
 		print(' Quota charged: {}'.format(self.get_quota_charged()))
 		print(' Update sequence number: {}'.format(self.get_usn()))
