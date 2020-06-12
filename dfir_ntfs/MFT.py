@@ -1,7 +1,7 @@
 # dfir_ntfs: an NTFS parser for digital forensics & incident response
 # (c) Maxim Suhanov
 #
-# This module implements an interface to work with file record segments and file records in an $MFT file.
+# This module implements an interface to work with file record segments and file records in an $MFT file, also with volumes and memory images.
 
 from . import Attributes, BootSector
 import struct
@@ -41,6 +41,9 @@ FILE_NUMBER_EXTEND = 11
 
 # Constants from in-memory structures:
 FILE_CONTROL_BLOCK_SIGNATURE = b'\x02\x07'
+
+# Attribute (resident) flags:
+ATTR_RESIDENT_INDEXED = 1 # This resident attribute is indexed.
 
 class MasterFileTableException(Exception):
 	"""This is a top-level exception for this module."""
