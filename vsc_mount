@@ -19,7 +19,7 @@ FILE_NAME_IMAGE_FILE = b'image.raw'
 class VSCFS(llfuse.Operations):
 	"""This is an implementation of a FUSE file system (llfuse) for a shadow copy."""
 
-	def __init__(self, volume_path, volume_offset, stack_position):
+	def __init__(self, volume_path, volume_offset, stack_position, debug_fill = False):
 		super(VSCFS, self).__init__()
 
 		# Open the volume file.
@@ -28,6 +28,8 @@ class VSCFS(llfuse.Operations):
 		# Save the arguments.
 		self._volume_offset = volume_offset
 		self._stack_position = stack_position
+
+		self._debug_fill = debug_fill
 
 		# Parse the shadow copy.
 		self._vss = ShadowCopy.ShadowParser(self._volume_file, self._volume_offset)
@@ -136,7 +138,7 @@ class VSCFS(llfuse.Operations):
 			raise llfuse.FUSEError(errno.EBADF)
 
 		self._vss.seek(off)
-		return self._vss.read(size)
+		return self._vss.read(size, self._debug_fill)
 
 	def readdir(self, fh, off):
 		if fh != FILE_HANDLE_ROOT_DIR:
@@ -209,20 +211,26 @@ def print_usage():
 	print('Usage:')
 	print(' vsc_mount --mount <input file (raw image)> <volume offset (in bytes)> <stack position of a shadow copy> <mount point>')
 	print(' vsc_mount --list <input file (raw image)> <volume offset (in bytes)>')
+	print('')
+	print('Change --mount to --mount-altfill to enable alternate fill patterns for null blocks and blocks pointing to original data')
 
 if len(sys.argv) < 2:
 	print_usage()
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mount', '--list' ]:
+if mode not in [ '--mount', '--mount-altfill', '--list' ]:
 	print_usage()
 	sys.exit(0)
 
-if mode == '--mount':
+if mode == '--mount' or mode == '--mount-altfill':
 	if len(sys.argv) != 6:
 		print_usage()
 		sys.exit(0)
+
+	alt_fill = False
+	if mode == '--mount-altfill':
+		alt_fill = True
 
 	volume_path = sys.argv[2]
 	try:
@@ -239,7 +247,7 @@ if mode == '--mount':
 		sys.exit(255)
 
 	try:
-		file_system = VSCFS(volume_path, volume_offset, stack_position)
+		file_system = VSCFS(volume_path, volume_offset, stack_position, alt_fill)
 	except (OSError, IOError):
 		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
 		sys.exit(255)

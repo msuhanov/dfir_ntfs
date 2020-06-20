@@ -1125,26 +1125,49 @@ class ShadowParser(object):
 
 		return new_offsets
 
-	def read_at_exact_offset(self, offset):
-		"""Read a block at a given aligned volume offset."""
+	def read_at_exact_offset(self, offset, debug_fill = False):
+		"""Read a block at a given aligned volume offset.
+		If the 'debug_fill' argument is True, use a custom byte pattern to fill empty blocks and blocks pointing to original offsets.
+		"""
 
 		new_offsets = self.translate_exact_offset(offset)
 		if len(new_offsets) == 0:
 			return b''
 
 		data = b''
-		for new_offset in new_offsets:
-			if new_offset is None: # An empty block.
-				data += b'\x00' * 512
 
-			else: # A block with data.
-				self.volume_object.seek(self.volume_offset + new_offset)
-				new_data = self.volume_object.read(512)
+		if not debug_fill:
+			for new_offset in new_offsets:
+				if new_offset is None: # An empty block.
+					data += b'\x00' * 512
 
-				data += new_data
+				else: # A block with data.
+					self.volume_object.seek(self.volume_offset + new_offset)
+					new_data = self.volume_object.read(512)
 
-				if len(new_data) != 512: # Truncated data.
-					break
+					data += new_data
+
+					if len(new_data) != 512: # Truncated data.
+						break
+		else:
+			i = 0
+			for new_offset in new_offsets:
+				if new_offset is None: # An empty block, use the empty pattern.
+					data += b'EMPTY           ' * 32
+
+				elif new_offset == offset + 512 * i: # A block with original data, use the original pattern.
+					data += b'ORIGINAL        ' * 32
+
+				else: # A block with different data, return it.
+					self.volume_object.seek(self.volume_offset + new_offset)
+					new_data = self.volume_object.read(512)
+
+					data += new_data
+
+					if len(new_data) != 512: # Truncated data.
+						break
+
+				i += 1
 
 		return data
 
@@ -1183,8 +1206,10 @@ class ShadowParser(object):
 
 		return self.current_offset
 
-	def read(self, size = None):
-		"""The read() method for a virtual volume."""
+	def read(self, size = None, debug_fill = False):
+		"""The read() method for a virtual volume.
+		If the 'debug_fill' argument is True, use a custom byte pattern to fill empty blocks and blocks pointing to original offsets.
+		"""
 
 		if not self.shadow_selected:
 			raise ValueError('No shadow copy selected')
@@ -1202,7 +1227,7 @@ class ShadowParser(object):
 		block_offset = self.current_offset // 0x4000 * 0x4000
 		offset_in_block = self.current_offset % 0x4000
 
-		data = self.read_at_exact_offset(block_offset)[offset_in_block : offset_in_block + size]
+		data = self.read_at_exact_offset(block_offset, debug_fill)[offset_in_block : offset_in_block + size]
 		self.current_offset += len(data)
 
 		bytes_left = size - len(data)
@@ -1213,7 +1238,7 @@ class ShadowParser(object):
 			block_offset = self.current_offset // 0x4000 * 0x4000
 			offset_in_block = self.current_offset % 0x4000
 
-			new_data = self.read_at_exact_offset(block_offset)[offset_in_block : offset_in_block + bytes_left]
+			new_data = self.read_at_exact_offset(block_offset, debug_fill)[offset_in_block : offset_in_block + bytes_left]
 			self.current_offset += len(new_data)
 
 			data += new_data

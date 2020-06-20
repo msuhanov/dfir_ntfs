@@ -1,3 +1,9 @@
+Version: 1.0.6
+
+Add optional fill patterns to help when working with scoped shadow copies and unallocated data.
+
+---
+
 Version: 1.0.5
 
 Minor changes.
