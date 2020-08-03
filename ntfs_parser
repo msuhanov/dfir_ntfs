@@ -6,6 +6,7 @@
 import sys
 import csv
 from dfir_ntfs import *
+from tqdm import tqdm
 
 def format_timestamp(timestamp):
 	if timestamp is None:
@@ -80,7 +81,7 @@ def process_mft(source_tag = None):
 
 	csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
 
-	for file_record in mft.file_records():
+	for file_record in tqdm( mft.file_records() ):
 
 		# Parse this file record.
 
