@@ -12,7 +12,7 @@ import io
 import gzip
 import tarfile
 import pickle
-from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy, PartitionTable
+from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy, PartitionTable, MoveTable
 
 TEST_DATA_DIR = 'test_data'
 
@@ -118,6 +118,10 @@ PT_MBR_1_2_GZ_2 = os.path.join(TEST_DATA_DIR, 'mbr-512-p1e2_2.bin.gz')
 PT_MBR_WIN = os.path.join(TEST_DATA_DIR, 'mbr-win-512.raw.tgz')
 
 FCB = os.path.join(TEST_DATA_DIR, 'fcb.bin')
+
+TRACKING_4Kn = os.path.join(TEST_DATA_DIR, 'tracking_4kn.bin')
+TRACKING_512 = os.path.join(TEST_DATA_DIR, 'tracking_3_move_to.bin')
+TRACKING_512_LARGE = os.path.join(TEST_DATA_DIR, 'tracking_512_large.log')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -3196,4 +3200,186 @@ def test_fcb_carver():
 
 	assert c == 200
 
+	f.close()
+
+def test_movetable():
+	f = open(TRACKING_4Kn, 'rb')
+
+	with pytest.raises(ValueError):
+		m = MoveTable.Header(f.read(1024))
+
+	f.seek(0)
+
+	parser = MoveTable.MoveTableParser(f, 4096)
+	m = parser.get_header()
+
+	assert m.get_unknown_16() == 65536
+	assert m.get_flags() == 0
+	assert m.get_unknown_24() == 0
+
+	assert not m.is_log_flushed()
+
+	expansion_data = m.get_expansion_data()
+	assert expansion_data.lowest_log_entry_index_present == 0 and expansion_data.highest_log_entry_index_present == 0 and expansion_data.file_size == 0
+
+	extended_header = m.get_extended_header()
+
+	assert extended_header.machine_id == 'desktop-rd341ha' and str(extended_header.volume_object_id) == 'c621d9da-d9d0-47ef-aac8-0e4655e99c5e'
+	assert extended_header.unknown_32 == 0 and extended_header.unknown_timestamp_int_40 == 0 and extended_header.unknown_timestamp_int_48 == 0
+	assert extended_header.unknown_flags_56 == 0 and extended_header.unknown_state_60
+	assert extended_header.unknown_log_entry_index_64 == 0 and extended_header.unknown_log_entry_index_68 == 0x7F and extended_header.unknown_log_entry_index_72 == 0
+	assert extended_header.unknown_log_entry_index_76 == 0 and extended_header.unknown_log_entry_index_80 == 0x7F and extended_header.unknown_log_entry_index_84 == 0
+	assert extended_header.unknown_log_entry_index_88 == 0xFFFFFFFF
+
+	m = MoveTable.LogSector(f.read(4096))
+	mf = m.get_footer()
+
+	assert mf.get_lowest_log_entry_index_present() == 0 and mf.get_next_log_entry_index() == 9 and mf.get_unused() == b'\x00' * 8
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 4
+
+	c = 0
+
+	next_index = 1
+	this_index = 0
+	prev_index = 0x7F
+	for log_entry in parser.log_entries():
+		c += 1
+
+		assert log_entry.get_log_entry_type() == 2
+		assert log_entry.get_next_log_entry_index() == next_index and log_entry.get_previous_log_entry_index() == prev_index and log_entry.get_log_entry_index() == this_index
+		assert log_entry.get_unknown_16() == 0 and log_entry.get_unknown_120() == 0
+
+		next_index += 1
+		this_index += 1
+		if prev_index == 0x7F:
+			prev_index = 0
+		else:
+			prev_index += 1
+
+		assert log_entry.get_machine_id() == 'desktop-rd341ha'
+
+		assert str(log_entry.get_birth_droid()[0]) == 'c621d9da-d9d0-47ef-aac8-0e4655e99c5e'
+		assert log_entry.get_birth_droid()[1].node == 90520731923542
+
+		assert str(log_entry.get_droid()[0]) == '891b42ce-e70d-45d9-8919-b429b47817a8'
+		assert log_entry.get_droid()[1].node == 90520731923542
+
+		assert log_entry.get_object_id().node == 90520731923542
+
+		ts_1, ts_2 = log_entry.get_timestamp()
+		assert ts_1.year == 2020 and ts_2.year == 2020
+
+	assert c == 9
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 4
+
+	f.close()
+
+	f = open(TRACKING_512, 'rb')
+
+	parser = MoveTable.MoveTableParser(f)
+	m = parser.get_header()
+
+	assert m.get_unknown_16() == 65536
+	assert m.get_flags() == 1
+	assert m.get_unknown_24() == 0
+
+	assert m.is_log_flushed()
+
+	expansion_data = m.get_expansion_data()
+	assert expansion_data.lowest_log_entry_index_present == 0 and expansion_data.highest_log_entry_index_present == 0 and expansion_data.file_size == 0
+
+	extended_header = m.get_extended_header()
+
+	assert extended_header.machine_id == 'desktop-rd341ha' and str(extended_header.volume_object_id) == 'e6984ab8-17ef-4919-b259-c7bea2cd381b'
+	assert extended_header.unknown_32 == 0 and extended_header.unknown_timestamp_int_40 == 0 and extended_header.unknown_timestamp_int_48 == 0
+	assert extended_header.unknown_flags_56 == 0 and extended_header.unknown_state_60
+	assert extended_header.unknown_log_entry_index_64 == 0 and extended_header.unknown_log_entry_index_68 == 0x9B and extended_header.unknown_log_entry_index_72 == 0
+	assert extended_header.unknown_log_entry_index_76 == 0 and extended_header.unknown_log_entry_index_80 == 0x9B and extended_header.unknown_log_entry_index_84 == 0
+
+	m = MoveTable.LogSector(f.read(512))
+	mf = m.get_footer()
+
+	assert mf.get_lowest_log_entry_index_present() == 0 and mf.get_next_log_entry_index() == 0 and mf.get_unused() == b'\x00' * 8
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 39
+
+	for log_entry in parser.log_entries():
+		assert False
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 39
+
+	f.close()
+
+	f = open(TRACKING_512_LARGE, 'rb')
+
+	parser = MoveTable.MoveTableParser(f)
+	m = parser.get_header()
+
+	assert m.get_unknown_16() == 65536
+	assert m.get_flags() == 1
+	assert m.get_unknown_24() == 0
+
+	assert m.is_log_flushed()
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 39
+
+	c = 0
+	for log_entry in parser.log_entries():
+		c += 1
+
+		assert log_entry.get_machine_id() == 'desktop-tvv7sco'
+
+		assert log_entry.get_birth_droid()[1].node == 90520731923542
+		assert log_entry.get_droid()[1].node == 90520731923542
+		assert log_entry.get_object_id().node == 90520731923542
+
+		ts_1, ts_2 = log_entry.get_timestamp()
+		assert ts_1.year == 2020 and ts_2.year == 2020 and ts_1.month == 8 and ts_2.month == 8
+
+	assert c == 30
+
+	c = 0
+	for log_sector in parser.log_sectors():
+		c += 1
+
+	assert c == 39
+
+	f.close()
+
+def test_movetable_guess_sector_size():
+	f = open(TRACKING_4Kn, 'rb')
+	m = MoveTable.MoveTableParser(f)
+	assert m.sector_size == 4096
+	f.close()
+
+	f = open(TRACKING_512, 'rb')
+	m = MoveTable.MoveTableParser(f)
+	assert m.sector_size == 512
+	f.close()
+
+	f = open(TRACKING_512_LARGE, 'rb')
+	m = MoveTable.MoveTableParser(f)
+	assert m.sector_size == 512
 	f.close()

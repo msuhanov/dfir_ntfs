@@ -73,12 +73,17 @@ def format_source(source_str, source_tag):
 
 	return '{} ({})'.format(source_str, source_tag)
 
+
+print_header = True
+
 def process_mft(source_tag = None):
-	global input_file, csv_writer
+	global input_file, csv_writer, print_header
 
 	mft = MFT.MasterFileTableParser(input_file)
 
-	csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
+	if print_header:
+		csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
+		print_header = False
 
 	for file_record in mft.file_records():
 
@@ -845,12 +850,66 @@ def process_all_mft():
 			process_mft('shadow copy {}'.format(shadow_copy.stack_position))
 
 def process_mem():
+	global input_file, csv_writer
+
 	carver = MFT.MetadataCarver(input_file)
 
 	csv_writer.writerow(['Possible MFT reference number', 'M timestamp', 'A timestamp', 'C timestamp', 'E timestamp', 'A timestamp (real)'])
 
 	for fcb_timestamps in carver.carve_fcb_timestamps():
 		csv_writer.writerow([fcb_timestamps.possible_file_reference, fcb_timestamps.mtime, fcb_timestamps.atime, fcb_timestamps.ctime, fcb_timestamps.etime, fcb_timestamps.atime_real])
+
+def process_movetable():
+	global input_file, output_file
+
+	parser = MoveTable.MoveTableParser(input_file)
+
+	extended_header = parser.get_header().get_extended_header()
+
+	output_lines = []
+
+	output_lines.append('File header:')
+	output_lines.append(' * Machine ID: {}'.format(extended_header.machine_id))
+	output_lines.append(' * Volume object ID: {}'.format(extended_header.volume_object_id))
+
+	output_data = '\n'.join(output_lines)
+	output_file.write(output_data)
+	output_file.write('\n\n---\n\n')
+
+	for log_entry in parser.log_entries():
+		output_lines = []
+
+		obj_id = log_entry.get_object_id()
+		output_lines.append('Object ID: {}'.format(obj_id))
+		output_lines.append('')
+
+		droid_volume, droid_file = log_entry.get_droid()
+		output_lines.append('Domain-relative object ID, volume: {}'.format(droid_volume))
+		output_lines.append('Domain-relative object ID, file: {}'.format(droid_file))
+		output_lines.append('')
+
+		machine_id = log_entry.get_machine_id()
+		output_lines.append('Machine ID: {}'.format(machine_id))
+		output_lines.append('')
+
+		birth_droid_volume, birth_droid_file = log_entry.get_birth_droid()
+		output_lines.append('Birth domain-relative object ID, volume: {}'.format(birth_droid_volume))
+		output_lines.append('Birth domain-relative object ID, file: {}'.format(birth_droid_file))
+		output_lines.append('')
+
+		object_id_timestamp, droid_object_timestamp, birth_droid_object_timestamp = log_entry.get_guid_timestamps()
+		output_lines.append('GUID timestamps:')
+		output_lines.append(' * Object ID: {}'.format(format_timestamp(object_id_timestamp)))
+		output_lines.append(' * Domain-relative object ID, file: {}'.format(format_timestamp(droid_object_timestamp)))
+		output_lines.append(' * Birth domain-relative object ID, file: {}'.format(format_timestamp(birth_droid_object_timestamp)))
+		output_lines.append('')
+
+		timestamp_min, timestamp_max = log_entry.get_timestamp()
+		output_lines.append('Timestamp (range): {} - {}'.format(format_timestamp(timestamp_min), format_timestamp(timestamp_max)))
+
+		output_data = '\n'.join(output_lines)
+		output_file.write(output_data)
+		output_file.write('\n\n---\n\n')
 
 def print_usage():
 	print('Extract information from NTFS metadata files, volumes, and shadow copies')
@@ -862,17 +921,18 @@ def print_usage():
 	print(' ntfs_parser --indx <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
 	print(' ntfs_parser --all-mft <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
 	print(' ntfs_parser --mem <input file (raw memory image)> <output file (CSV)>')
+	print(' ntfs_parser --move <input file (tracking.log)> <output file (TXT)>')
 
 if len(sys.argv) != 4 and len(sys.argv) != 5:
 	print_usage()
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mft', '--usn', '--log', '--indx', '--all-mft', '--mem' ]:
+if mode not in [ '--mft', '--usn', '--log', '--indx', '--all-mft', '--mem', '--move' ]:
 	print_usage()
 	sys.exit(0)
 
-if mode in [ '--mft', '--mem' ] and len(sys.argv) != 4:
+if mode in [ '--mft', '--mem', '--move' ] and len(sys.argv) != 4:
 	print_usage()
 	sys.exit(0)
 
@@ -931,6 +991,11 @@ elif mode == '--mem':
 	csv_writer = csv.writer(output_file, dialect = 'excel')
 
 	process_mem()
+elif mode == '--move':
+	input_file = open(sys.argv[2], 'rb')
+	output_file = open(sys.argv[3], 'w', encoding = 'utf-8')
+
+	process_movetable()
 
 input_file.close()
 output_file.close()
