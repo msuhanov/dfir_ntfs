@@ -49,6 +49,7 @@ MFT_COMPRESSED_SPARSE = os.path.join(TEST_DATA_DIR, 'compressed_sparse.mft')
 MFT_DIFFERENT_LA = os.path.join(TEST_DATA_DIR, 'different_la.mft')
 MFT_DELETED = os.path.join(TEST_DATA_DIR, 'deleted.mft')
 MFT_SLACK = os.path.join(TEST_DATA_DIR, 'slack.mft')
+MFT_SLACK_2 = os.path.join(TEST_DATA_DIR, 'slack-2.mft')
 
 MFT_MIRR = os.path.join(TEST_DATA_DIR, 'boot.mftmirr')
 MFT_MIRR_4K = os.path.join(TEST_DATA_DIR, '4k-large.mftmirr')
@@ -1474,6 +1475,32 @@ def test_mft_slack():
 		assert len(slack.value) > 0
 
 	assert c == 4
+
+	f.close()
+
+	f = open(MFT_SLACK_2, 'rb')
+
+	mft = MFT.MasterFileTableParser(f)
+	file_record = mft.get_file_record_by_number(39)
+
+	file_names_expected = [ 't3.txt', 't3.txt', 't2.txt' ]
+
+	c = 0
+	for slack in file_record.slack():
+		c += 1
+
+		for file_name in slack.carve(True):
+			assert type(file_name) is Attributes.FileName or type(file_name) is str
+
+			if type(file_name) is Attributes.FileName:
+				file_name_str = file_name.get_file_name()
+			else:
+				file_name_str = file_name
+
+			assert file_name_str == file_names_expected.pop(0)
+
+	assert c == 1
+	assert len(file_names_expected) == 0
 
 	f.close()
 

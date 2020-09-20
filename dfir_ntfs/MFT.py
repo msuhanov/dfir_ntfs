@@ -589,9 +589,11 @@ class SlackSpace(object):
 		self.timestamp_not_before = 125000000000000000 # Year: 1997.
 		self.timestamp_not_after = 145000000000000000 # Year: 2060.
 
-	def carve(self):
+	def carve(self, yield_partial = False):
 		"""This method yields possible attributes (as objects from the Attributes module) extracted from this slack space.
 		Only the $FILE_NAME attributes are supported.
+		If the 'yield_partial' argument is True, when the slack space starts with a partial $FILE_NAME attribute, yield its recognizable name (as a string).
+		This name could be partially overwritten, thus not full.
 		"""
 
 		def validate_timestamp(timestamp):
@@ -606,11 +608,13 @@ class SlackSpace(object):
 
 			return True
 
-		def carve_internal(value):
+		def carve_internal(value, yield_partial = False):
 			if len(value) >= 8:
 				pos = 0
 				if len(value) % 2 != 0:
 					pos = 1
+
+				first_attr_pos = None
 
 				while pos < len(value):
 					buf = value[pos : pos + 32]
@@ -642,18 +646,64 @@ class SlackSpace(object):
 							if validate_file_name(file_name_str):
 								yield file_name
 
+								if first_attr_pos is None:
+									first_attr_pos = attr_pos
+
 								# Jump to the file name part and continue.
 								pos += 68
 								continue
 
 					pos += 2
 
+				if yield_partial and first_attr_pos is not None and first_attr_pos >= 10:
+
+					# Only file names with printable ASCII characters are supported. Some unusual (and most likely invalid) characters are excluded.
+
+					printable = b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"#$%&\'()*+,-.;<=>?@[]^_`{|}~ \t'
+
+					slack_start = value[ : first_attr_pos]
+					curr_pos = first_attr_pos - 2
+
+					while curr_pos > 0:
+						# Skip trailing null bytes.
+						if slack_start[curr_pos : curr_pos + 2] != b'\x00\x00':
+							break
+
+						curr_pos -= 2
+
+					if curr_pos > 0:
+						# We have found the last character of a file name.
+
+						file_name_reversed = ''
+
+						while curr_pos > 0:
+							byte_1 = slack_start[curr_pos]
+							byte_2 = slack_start[curr_pos + 1]
+
+							if byte_1 in printable and byte_2 == 0:
+
+								# An edge case: a file name length, as a byte, corresponds to a printable ASCII character.
+								# This edge case is ignored.
+
+								file_name_reversed += chr(byte_1)
+
+							elif len(file_name_reversed) >= 5: # Stop if a non-ASCII character is encountered and we have a plausible file name.
+								break
+
+							else: # In any other case, try another sequence of bytes as a file name.
+								file_name_reversed = ''
+
+							curr_pos -= 2
+
+						if len(file_name_reversed) >= 5: # Do not yield garbage.
+							yield file_name_reversed[::-1]
+
 		if type(self.value) is list:
 			for curr_value in self.value:
-				for r in carve_internal(curr_value):
+				for r in carve_internal(curr_value, yield_partial):
 					yield r
 		else:
-			for r in carve_internal(self.value):
+			for r in carve_internal(self.value, yield_partial):
 				yield r
 
 	def __str__(self):

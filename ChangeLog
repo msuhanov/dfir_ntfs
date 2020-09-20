@@ -1,3 +1,9 @@
+Version: 1.0.8
+
+Extract file name strings from partial $FILE_NAME attributes in file record slack.
+
+---
+
 Version: 1.0.7
 
 Add a module and implement a mode to parse the MoveTable (the "tracking.log" file).
