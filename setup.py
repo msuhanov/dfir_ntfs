@@ -16,5 +16,8 @@ setup(
 		'Operating System :: OS Independent',
 		'Programming Language :: Python :: 3',
 		'Development Status :: 5 - Production/Stable'
-	]
+	],
+	extras_require = {
+		'FUSE': [ 'llfuse' ]
+	}
 )
