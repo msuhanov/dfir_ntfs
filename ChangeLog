@@ -1,3 +1,9 @@
+Version: 1.0.9 (not released yet)
+
+Add a method to parse the compacted size field of an attribute list.
+
+---
+
 Version: 1.0.8
 
 Extract file name strings from partial $FILE_NAME attributes in file record slack.

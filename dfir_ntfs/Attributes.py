@@ -129,6 +129,9 @@ FILE_NEED_EA = 0x00000080 # An application should read the extended attribute to
 MULTI_SECTOR_HEADER_SIGNATURE_INDEX = b'INDX'
 UPDATE_SEQUENCE_STRIDE_INDEX = 512
 
+# A last compacted size signature for attribute lists:
+LAST_COMPACTED_SIZE_SIGNATURE = b'DC'
+
 def ResolveFileAttributes(FileAttributes):
 	"""Convert file attributes to a string. Only known file attributes are converted."""
 
@@ -557,6 +560,16 @@ class AttributeList(GenericAttribute):
 
 			pos += record_length_aligned
 
+	def get_last_compacted_size(self):
+		"""Get and return the last compacted size (in bytes) or None, if not set."""
+
+		signature = self.value[26 : 28]
+		if signature != LAST_COMPACTED_SIZE_SIGNATURE:
+			return
+
+		last_compacted_size = struct.unpack('<L', self.value[28 : 32])[0]
+		return last_compacted_size
+
 	def print_information(self):
 		"""Print all information in a human-readable form."""
 
@@ -573,6 +586,14 @@ class AttributeList(GenericAttribute):
 			print(' Attribute #{} instance: {}, lowest VCN: {}, segment reference: {}'.format(i, list_entry.attribute_instance, list_entry.lowest_vcn, list_entry.segment_reference))
 
 			i += 1
+
+		print('')
+
+		last_compacted_size = self.get_last_compacted_size()
+		if last_compacted_size is None:
+			last_compacted_size = 'not set'
+
+		print('Last compacted size (in bytes): {}'.format(last_compacted_size))
 
 class SecurityDescriptor(GenericAttribute):
 	"""$SECURITY_DESCRIPTOR."""
