@@ -7,6 +7,16 @@ import sys
 import csv
 from dfir_ntfs import *
 
+try:
+	from tqdm import tqdm
+except ModuleNotFoundError:
+	# TQDM is not available
+	def tqdm_if_available(args):
+		return args
+else:
+	# TQDM is available
+	tqdm_if_available = tqdm
+
 def format_timestamp(timestamp):
 	if timestamp is None:
 		return 'N/A'
@@ -85,7 +95,7 @@ def process_mft(source_tag = None):
 		csv_writer.writerow(['Source', 'MFT reference number', 'Is in use', 'Is directory', 'Log file sequence number', 'Path', '$SI M timestamp', '$SI A timestamp', '$SI C timestamp', '$SI E timestamp', '$SI USN value', '$FN M timestamp', '$FN A timestamp', '$FN C timestamp', '$FN E timestamp', '$OBJID timestamp', 'File size', 'ADS list', 'WSL M timestamp', 'WSL A timestamp', 'WSL CH timestamp'])
 		print_header = False
 
-	for file_record in mft.file_records():
+	for file_record in tqdm_if_available(mft.file_records()):
 
 		# Parse this file record.
 
