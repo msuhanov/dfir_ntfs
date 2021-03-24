@@ -102,6 +102,11 @@ VOLUME_VSS_2003 = os.path.join(TEST_DATA_DIR, 'vss_2003.tgz')
 VOLUME_VSS_2003_HASHES = os.path.join(TEST_DATA_DIR, 'vss_2003_hashes.txt')
 VOLUME_VSS_2003_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_2003_all_hashes.txt')
 
+VOLUME_VSS_TWO_1 = os.path.join(TEST_DATA_DIR, 'vss_1_vol.tar.gz')
+VOLUME_VSS_TWO_2 = os.path.join(TEST_DATA_DIR, 'vss_2_stor.tar.gz')
+VOLUME_VSS_TWO_1_BM = os.path.join(TEST_DATA_DIR, 'vss_1_vol_bm.bin')
+VOLUME_VSS_TWO_3 = os.path.join(TEST_DATA_DIR, 'vss_3_volstor.tar.gz')
+
 NTFS_LONE_WOLF = os.path.join(TEST_DATA_DIR, 'dc_lonewolf.raw') # This file is too large to be included into the repository. This is a raw image from the 2018 Lone Wolf Scenario.
 VOLUME_VSS_LONE_WOLF_ALL_HASHES = os.path.join(TEST_DATA_DIR, 'vss_lw_all_hashes.txt') # This file is too large to be included into the repository.
 VOLUME_VSS_LONE_WOLF_OFFSETS = os.path.join(TEST_DATA_DIR, 'vss_lw_offsets.txt')
@@ -3410,3 +3415,168 @@ def test_movetable_guess_sector_size():
 	m = MoveTable.MoveTableParser(f)
 	assert m.sector_size == 512
 	f.close()
+
+def test_shadow_two_volumes_1():
+	f1 = tarfile.open(VOLUME_VSS_TWO_1, 'r').extractfile('vss_1_vol.raw')
+	f2 = tarfile.open(VOLUME_VSS_TWO_2, 'r').extractfile('vss_2_stor.raw')
+
+	with pytest.raises(NotImplementedError):
+		parser = ShadowCopy.ShadowParser(f1, 67584 * 512)
+		parser.select_shadow(1)
+
+	with pytest.raises(NotImplementedError):
+		parser = ShadowCopy.ShadowParserTwoVolumes(f2, f1, 67584 * 512, None, 67584 * 512)
+
+	parser = ShadowCopy.ShadowParser(f2, 67584 * 512)
+
+	c = 0
+	for i in parser.shadows():
+		c += 1
+
+	assert c == 1
+
+	parser.select_shadow(1)
+	parser.seek(40 * 4096)
+	buf_shadow = parser.read(2 * 4096)
+
+	f2.seek(67584 * 512 + 40 * 4096)
+	buf_curr = f2.read(2 * 4096)
+
+	assert buf_shadow == b'STORAGE' * 1100 + b'\x00' * 492
+	assert buf_curr == b'5TORAGE' * 1100 + b'\x00' * 492
+
+	with pytest.raises(ShadowCopy.ShadowCopyNotFoundException):
+		parser.select_shadow(2)
+
+	with pytest.raises(ShadowCopy.ShadowCopyNotFoundException):
+		parser.select_shadow(3)
+
+	mft = MFT.FileSystemParser(parser)
+	md5 = hashlib.md5()
+
+	while True:
+		buf = mft.read(512)
+		md5.update(buf)
+
+		if len(buf) != 512:
+			break
+
+	assert md5.hexdigest() == '58f3e851fa2c9b9c7a631db912386e21'
+
+	parser.seek(44 * 4096)
+	buf = parser.read(8192)
+
+	assert hashlib.md5(buf).hexdigest() == '5149c33b9453e2bf30a5e6ec944654f7'
+
+	parser = ShadowCopy.ShadowParserTwoVolumes(f1, f2, 67584 * 512, None, 67584 * 512)
+
+	c = 0
+	for i in parser.shadows():
+		c += 1
+
+	assert c == 2
+
+	for __ in range(2):
+		parser.select_shadow(1)
+
+		parser.seek(1837 * 4096)
+		buf_shadow = parser.read(172 * 4096)
+
+		assert buf_shadow == b'1' * 703800 + b'\x00' * 712
+
+		parser.select_shadow(2)
+
+		parser.seek(1837 * 4096)
+		buf_shadow = parser.read(172 * 4096)
+
+		assert buf_shadow == b'2' * 703800 + b'\x00' * 712
+
+		with pytest.raises(ShadowCopy.ShadowCopyNotFoundException):
+			parser.select_shadow(3)
+
+		f1.seek(67584 * 512 + 1837 * 4096)
+		buf_curr = f1.read(172 * 4096)
+
+		assert buf_curr == b'3' * 703800 + b'\x00' * 712
+
+		parser.select_shadow(1)
+		parser.select_shadow(2)
+
+	bitmap = open(VOLUME_VSS_TWO_1_BM, 'rb').read()
+
+	parser.select_shadow(1)
+	md5 = hashlib.md5()
+
+	i = 0
+	while i < len(bitmap) * 8:
+		if (bitmap[i // 8] >> (i % 8)) & 1 > 0:
+			if i + 1 == len(bitmap) * 8:
+				# Two hashes below have been generated from allocated data extracted by The Sleuth Kit.
+				# Skip the last cluster to match its behavior.
+				break
+
+			parser.seek(i * 4096)
+			buf = parser.read(4096)
+			md5.update(buf)
+
+		i += 1
+
+	assert md5.hexdigest() == '1c3920a329d6ce78bd6b837fad79e4e4'
+
+	# This shadow copy has the same bitmap.
+
+	parser.select_shadow(2)
+	md5 = hashlib.md5()
+
+	i = 0
+	while i < len(bitmap) * 8:
+		if (bitmap[i // 8] >> (i % 8)) & 1 > 0:
+			if i + 1 == len(bitmap) * 8: # See above.
+				break
+
+			parser.seek(i * 4096)
+			buf = parser.read(4096)
+
+			if buf.startswith(ShadowCopy.VSP_DIFF_AREA_FILE_GUID):
+				# Such areas are nulled out by the volsnap driver.
+				# But this parser returns them as is, let's deal with it.
+				buf = b'\x00' * 4096
+
+			md5.update(buf)
+
+		i += 1
+
+	assert md5.hexdigest() == '2f2e7ea121b37b2d83ff6a86648441fd'
+
+	f1.close()
+	f2.close()
+
+def test_shadow_two_volumes_2():
+	f = tarfile.open(VOLUME_VSS_TWO_3, 'r').extractfile('vss_3_volstor.raw')
+
+	parser = ShadowCopy.ShadowParser(f, 2048 * 512)
+
+	for i in parser.shadows():
+		assert False
+
+	parser = ShadowCopy.ShadowParserTwoVolumes(f, f, 4196352 * 512, None, 2048 * 512)
+
+	c = 0
+	for i in parser.shadows():
+		c += 1
+
+	assert c == 2
+
+	parser.select_shadow(1)
+	parser.seek(261856 * 4096)
+	buf = parser.read(52272)
+	assert buf.strip(b'1') == b''
+
+	parser.select_shadow(2)
+	parser.seek(261856 * 4096)
+	buf = parser.read(52272)
+	assert buf.strip(b'2') == b''
+
+	f.seek(4196352 * 512 + 261856 * 4096)
+	buf = f.read(52272)
+	assert buf.strip(b'3') == b''

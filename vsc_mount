@@ -205,11 +205,45 @@ class VSCFS(llfuse.Operations):
 	def write(self, fh, off, buf):
 		raise llfuse.FUSEError(errno.EROFS)
 
+class VSCFS2(VSCFS):
+	"""This is an implementation of a FUSE file system (llfuse) for a shadow copy (two volumes)."""
+
+	def __init__(self, volume_path, storage_path, volume_offset, storage_offset, stack_position):
+		super(llfuse.Operations, self).__init__()
+
+		self._debug_fill = False
+
+		# Open the volume file.
+		self._volume_file = open(volume_path, 'rb')
+
+		# Open the storage file.
+		self._storage_file = open(storage_path, 'rb')
+
+		# Save the arguments.
+		self._volume_offset = volume_offset
+		self._storage_offset = storage_offset
+		self._stack_position = stack_position
+
+		# Parse the shadow copy.
+		self._vss = ShadowCopy.ShadowParserTwoVolumes(self._volume_file, self._storage_file, self._volume_offset, None, self._storage_offset)
+		self._vss.select_shadow(stack_position)
+
+	def destroy(self):
+		# Close the shadow copy.
+		self._vss.close()
+
+		# Close the volume file.
+		self._volume_file.close()
+
+		# Close the storage file.
+		self._storage_file.close()
+
 def print_usage():
 	print('Mount a shadow copy from a file system image')
 	print('')
 	print('Usage:')
 	print(' vsc_mount --mount <input file (raw image)> <volume offset (in bytes)> <stack position of a shadow copy> <mount point>')
+	print(' vsc_mount --mount-two <input file (raw image)> <input file, storage (raw image) <volume offset (in bytes)> <storage offset (in bytes)> <stack position of a shadow copy> <mount point>')
 	print(' vsc_mount --list <input file (raw image)> <volume offset (in bytes)>')
 	print('')
 	print('Change --mount to --mount-altfill to enable alternate fill patterns for null blocks and blocks pointing to original data')
@@ -219,7 +253,7 @@ if len(sys.argv) < 2:
 	sys.exit(0)
 
 mode = sys.argv[1]
-if mode not in [ '--mount', '--mount-altfill', '--list' ]:
+if mode not in [ '--mount', '--mount-altfill', '--mount-two', '--list' ]:
 	print_usage()
 	sys.exit(0)
 
@@ -248,6 +282,44 @@ if mode == '--mount' or mode == '--mount-altfill':
 
 	try:
 		file_system = VSCFS(volume_path, volume_offset, stack_position, alt_fill)
+	except (OSError, IOError):
+		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
+		sys.exit(255)
+
+	fuse_options = set(llfuse.default_options)
+	llfuse.init(file_system, mount_point, fuse_options)
+
+	try:
+		llfuse.main(workers = 1)
+	except Exception:
+		llfuse.close()
+		raise
+
+	llfuse.close()
+
+elif mode == '--mount-two':
+	if len(sys.argv) != 8:
+		print_usage()
+		sys.exit(0)
+
+	volume_path = sys.argv[2]
+	storage_path = sys.argv[3]
+	try:
+		volume_offset = int(sys.argv[4])
+		storage_offset = int(sys.argv[5])
+		stack_position = int(sys.argv[6])
+	except ValueError:
+		print_usage()
+		sys.exit(0)
+
+	mount_point = sys.argv[7]
+
+	if not os.path.isdir(mount_point):
+		print('Mount point does not exist (or not a directory): {}'.format(mount_point), file = sys.stderr)
+		sys.exit(255)
+
+	try:
+		file_system = VSCFS2(volume_path, storage_path, volume_offset, storage_offset, stack_position)
 	except (OSError, IOError):
 		print('Volume image does not exist: {}'.format(volume_path), file = sys.stderr)
 		sys.exit(255)
