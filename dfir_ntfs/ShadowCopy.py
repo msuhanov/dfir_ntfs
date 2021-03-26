@@ -1279,7 +1279,7 @@ class ShadowParserTwoVolumes(ShadowParser):
 	"""A list of ControlBlock objects for a storage volume."""
 
 	def __init__(self, volume_object, volume_storage_object, volume_offset = 0, volume_size = None, volume_storage_offset = 0):
-		"""Create a ShadowParser object from file objects for two volumes (the 'volume_object' and 'volume_storage_object' arguments).
+		"""Create a ShadowParserTwoVolumes object from file objects for two volumes (the 'volume_object' and 'volume_storage_object' arguments).
 		The 'volume_offset' argument can be used to specify the volume offset (in bytes).
 		The 'volume_size' argument can used used to specify the volume size (in bytes, can be None).
 		The 'volume_storage_offset' argument can be used to specify the storage volume offset (in bytes).
