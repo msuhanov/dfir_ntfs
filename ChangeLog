@@ -1,3 +1,9 @@
+Version: 1.0.10
+
+Implement additional checks for $FILE_NAME attributes in index entries.
+
+---
+
 Version: 1.0.9
 
 Add a method to parse the last compacted size field of an attribute list.

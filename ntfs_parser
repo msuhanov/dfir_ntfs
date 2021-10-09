@@ -735,7 +735,7 @@ def process_indx():
 				for index_buffer in i30.index_buffers():
 					for index_entry in index_buffer.index_entries():
 						attr_file_name_raw = index_entry.get_attribute()
-						if attr_file_name_raw is None:
+						if attr_file_name_raw is None or len(attr_file_name_raw) <= 66:
 							continue
 
 						attr_file_name = Attributes.FileName(attr_file_name_raw)

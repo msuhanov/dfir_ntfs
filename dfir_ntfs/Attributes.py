@@ -794,7 +794,7 @@ class IndexRoot(GenericAttribute):
 				vcn_list.append(str(vcn))
 
 				attribute_raw = index_entry.get_attribute()
-				if attribute_raw is not None:
+				if attribute_raw is not None and len(attribute_raw) > 66:
 					attribute = FileName(attribute_raw)
 
 					if print_header:
