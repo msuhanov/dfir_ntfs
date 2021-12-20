@@ -1,14 +1,15 @@
-dfir_ntfs: an NTFS parser for digital forensics & incident response
+dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 (Python 3 only.)
 
 1. Project goals
 
 - Parse $MFT, $UsnJrnl:$J, $LogFile files, extract as much data as possible.
 - Parse volumes, volume images, and volume shadow copies.
+- Parse FAT32 volumes.
 
 2. Installation
 
-# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.0.10.tar.gz
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.1.0.tar.gz
 
 3. Timestamps
 

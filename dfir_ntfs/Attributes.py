@@ -76,6 +76,8 @@ FILE_ATTR_NO_SCRUB_DATA = 0x20000
 FILE_ATTR_RECALL_ON_DATA_ACCESS = 0x400000
 FILE_ATTR_RECALL_ON_OPEN = 0x40000
 FILE_ATTR_VIRTUAL = 0x10000
+FILE_ATTRIBUTE_PINNED = 0x80000
+FILE_ATTRIBUTE_UNPINNED = 0x100000
 
 # These flags are valid for the $FILE_NAME attribute:
 DUP_FILE_NAME_INDEX_PRESENT = 0x10000000 # Is a directory (a file name index is present).
@@ -100,7 +102,9 @@ FILE_ATTR_LIST = {
 	FILE_ATTR_NO_SCRUB_DATA: 'NO_SCRUB_DATA',
 	FILE_ATTR_RECALL_ON_DATA_ACCESS: 'RECALL_ON_DATA_ACCESS',
 	FILE_ATTR_RECALL_ON_OPEN: 'RECALL_ON_OPEN',
-	FILE_ATTR_VIRTUAL: 'VIRTUAL'
+	FILE_ATTR_VIRTUAL: 'VIRTUAL',
+	FILE_ATTRIBUTE_PINNED: 'PINNED',
+	FILE_ATTRIBUTE_UNPINNED: 'UNPINNED'
 }
 
 # Extra flags for the $STANDARD_INFORMATION attribute:
@@ -112,8 +116,12 @@ TAG_DESKTOP = 1
 TAG_DOCUMENTS = 2
 TAG_MUSIC = 4
 TAG_PICTURES = 5
-TAG_VIDEOS = 6
+TAG_VIDEO = 6
 # (3 and 7 seem to be unused. 0 also means an absent tag.)
+
+# Trust levels for reparse points:
+TRUST_LEVEL_1 = 1 # Untrusted (regular users).
+TRUST_LEVEL_2 = 2 # The kernel mode or administrators.
 
 # Flags for the index header:
 INDEX_NODE = 0x01 # Is an intermediate node.
@@ -290,6 +298,11 @@ class StandardInformation(GenericAttribute):
 		"""Get and return the known folder information (tag)."""
 
 		return (self.get_extra_flags() & 0xE) >> 1
+
+	def get_trust_level(self):
+		"""Get and return the trust level of this reparse point."""
+
+		return (self.get_extra_flags() & 0x30) >> 4
 
 	def get_class_id(self):
 		"""Get and return the class ID for this file."""

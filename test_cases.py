@@ -13,6 +13,7 @@ import gzip
 import tarfile
 import pickle
 from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy, PartitionTable, MoveTable
+from dfir_ntfs.addons import FAT
 
 TEST_DATA_DIR = 'test_data'
 
@@ -128,6 +129,18 @@ FCB = os.path.join(TEST_DATA_DIR, 'fcb.bin')
 TRACKING_4Kn = os.path.join(TEST_DATA_DIR, 'tracking_4kn.bin')
 TRACKING_512 = os.path.join(TEST_DATA_DIR, 'tracking_3_move_to.bin')
 TRACKING_512_LARGE = os.path.join(TEST_DATA_DIR, 'tracking_512_large.log')
+
+FAT_BS = os.path.join(TEST_DATA_DIR, 'fat32_bs.bin')
+FAT_BS_DIRTY = os.path.join(TEST_DATA_DIR, 'fat32_bs_dirty.bin')
+FAT12_BS = os.path.join(TEST_DATA_DIR, 'fat12_bs.bin')
+FAT_FS_LSN = os.path.join(TEST_DATA_DIR, 'fat_lfn_test.raw.gz')
+FAT_DIRENT_1 = os.path.join(TEST_DATA_DIR, 'fat32_dirent.bin')
+FAT_DIRENT_2 = os.path.join(TEST_DATA_DIR, 'fat32_dirent_2.bin')
+FAT_DIRENT_3 = os.path.join(TEST_DATA_DIR, 'fat32_dirent_3.bin')
+FAT_DIRENT_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat32_dirent_orphan_lfn.bin')
+FAT_DIRENT_VERYLONG = os.path.join(TEST_DATA_DIR, 'fat32_dirent_verylong.bin')
+FAT_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat32_full_test.tgz')
+FAT_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat32_full_test.txt')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -636,13 +649,13 @@ def test_file_attributes():
 	assert s == 'READ_ONLY | SPARSE | NOT_CONTENT_INDEXED'
 
 	s = Attributes.ResolveFileAttributes(0x80201)
-	assert s == 'READ_ONLY | SPARSE'
+	assert s == 'READ_ONLY | SPARSE | PINNED'
 
 	s = Attributes.ResolveFileAttributes(0x80000)
-	assert s == ''
+	assert s == 'PINNED'
 
 	s = Attributes.ResolveFileAttributes(0x80004)
-	assert s == 'SYSTEM'
+	assert s == 'SYSTEM | PINNED'
 
 	s = Attributes.ResolveFileAttributes(0)
 	assert s == ''
@@ -3580,3 +3593,371 @@ def test_shadow_two_volumes_2():
 	f.seek(4196352 * 512 + 261856 * 4096)
 	buf = f.read(52272)
 	assert buf.strip(b'3') == b''
+
+def test_fat32_bs_bpb():
+	with open(FAT_BS, 'rb') as f:
+		b = FAT.BSBPB(f.read(512))
+
+	assert FAT.IsFileSystem32(b)
+
+	assert b.get_bs_jmpboot() == b'\xeb\x58\x90'
+	assert b.get_bs_oemname() == b'MSDOS5.0'
+	assert b.get_bpb_bytspersec() == 512
+	assert b.get_bpb_secperclus() == 32
+	assert b.get_bpb_rsvdseccnt() == 2860
+	assert b.get_bpb_numfats() == 2
+	assert b.get_bpb_rootentcnt() == 0
+	assert b.get_bpb_totsec16() == 0
+	assert b.get_bpb_media() == 0xF8
+	assert b.get_bpb_fatsz16() == 0
+	assert b.get_bpb_secpertrk() == 63
+	assert b.get_bpb_numheads() == 255
+	assert b.get_bpb_hiddsec() == 0
+	assert b.get_bpb_totsec32() == 61282631
+
+	assert b.get_bpb_fatsz32() == 14954
+	assert b.get_bpb_extflags() == (0, False)
+	assert b.get_bpb_fsver() == 0
+	assert b.get_bpb_rootclus() == 2
+	assert b.get_bpb_fsinfo() == 1
+	assert b.get_bpb_bkbootsec() == 6
+	assert b.get_bpb_reserved() == b'\x00' * 12
+	assert b.get_bs_drvnum() == 0x80
+
+	assert b.is_volume_dirty() == (False, False)
+
+	assert b.get_bs_extfields() == (0x4E42EF07, b'NO NAME    ', b'FAT32   ')
+
+	with pytest.raises(FAT.BootSectorException):
+		with open(FAT12_BS, 'rb') as f:
+			b = FAT.BSBPB(f.read(512))
+
+def test_fat32_bs_bpb_dirty():
+	with open(FAT_BS_DIRTY, 'rb') as f:
+		b = FAT.BSBPB(f.read(512))
+
+	assert FAT.IsFileSystem32(b)
+
+	assert b.get_bs_jmpboot() == b'\xeb\x58\x90'
+	assert b.get_bs_oemname() == b'mkfs.fat'
+	assert b.get_bpb_bytspersec() == 512
+
+	assert b.is_volume_dirty() == (True, False)
+
+def test_fat32_attributes():
+	assert FAT.ResolveFileAttributes(0x02) == 'HIDDEN'
+	assert FAT.ResolveFileAttributes(0x03) == 'READ_ONLY | HIDDEN'
+	assert FAT.ResolveFileAttributes(0x23) == 'READ_ONLY | HIDDEN | ARCHIVE'
+	assert FAT.ResolveFileAttributes(0) == ''
+
+def test_fat32_sfn():
+	assert FAT.ParseShortName(b'PICKLE  A  ') == 'PICKLE.A'
+	assert FAT.ParseShortName(b'PICKLE  A ') is None
+	assert FAT.ParseShortName(b'FOO     BAR') == 'FOO.BAR'
+	assert FAT.ParseShortName(b'FOO12345BA ') == 'FOO12345.BA'
+	assert FAT.ParseShortName(b'FOO12345BAR') == 'FOO12345.BAR'
+	assert FAT.ParseShortName(b'\xE5OO12345BAR') == '_OO12345.BAR'
+	assert FAT.ParseShortName(b'\x00OO12345B  ') == '_OO12345.B'
+	assert FAT.ParseShortName(b'\x05OO1234 B  ', 'windows-1251') == 'еOO1234.B'
+	assert FAT.ParseShortName(b'\x05OO123 B  ', 'windows-1251') is None
+	assert FAT.ParseShortName(b' ' * 11, 'windows-1251') is None
+	assert FAT.ParseShortName(b'FOO        ') == 'FOO'
+	assert FAT.ParseShortName(b'FOO  C     ') == 'FOO  C'
+	assert FAT.ParseShortName(b'FOO C      ') == 'FOO C'
+	assert FAT.ParseShortName(b'FOO C   EXE') == 'FOO C.EXE'
+
+def test_fat32_fs():
+	f = gzip.open(FAT_FS_LSN, 'rb')
+
+	b = FAT.BSBPB(f.read(512))
+
+	assert FAT.IsFileSystem32(b)
+	assert b.get_bpb_fsinfo() > 0
+
+	offset_in_bytes, size_in_bytes, last_data_cluster_plus_one = b.fat_offset_and_size()
+	assert offset_in_bytes > 512 and offset_in_bytes % 512 == 0 and size_in_bytes > 512 and size_in_bytes % 512 == 0 and last_data_cluster_plus_one > 2
+
+	f.seek(b.get_bpb_fsinfo() * b.get_bpb_bytspersec())
+	bi = FAT.FSINFO(f.read(512))
+
+	assert bi.get_fsi_reserved1() == b'\x00' * 480
+	assert bi.get_fsi_reserved2() == b'\x00' * 12
+	assert bi.get_fsi_free_count() == 0x01F7EB
+	assert bi.get_fsi_nxt_free() == 0x15
+
+	fat = FAT.FAT(f, offset_in_bytes, size_in_bytes, last_data_cluster_plus_one)
+	assert fat.get_bpb_media() == 0xF8
+	assert not fat.is_volume_dirty()
+	assert not fat.are_hard_errors_detected()
+
+	assert fat.chain(15) == [ 15 ]
+	assert fat.chain(255) == [ 255 ]
+	assert fat.chain(256) == [ 256 ]
+	assert fat.chain(2) == [ 2, 18 ]
+
+	with pytest.raises(FAT.FileAllocationTableException):
+		fat.chain(9000000)
+
+	with pytest.raises(FAT.FileAllocationTableException):
+		fat.chain(129024)
+
+	fat.chain(129023)
+
+	f.close()
+
+def test_fat32_dirent():
+	buf = open(FAT_DIRENT_1, 'rb').read()
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	long_names = [ 'usual_2.txt.PFILE', 'empty.txt.PFILE', 'usual_.txt.PFILE', 'Текстовый документ.txt', 'Текстовый документ.txt.PFILE', 'new.txt.PFILE', 'Текстовый документ.txt', 'Текстовый документ.txt.PFILE', 'new_2_.txt.PFILE', 'very long file name here, this is a test.txt', 'very long file name here, this is a test.txt.PFILE', 'привет.txt', 'привет.txt.PFILE' ]
+	cnt = 0
+	cnt_2 = 0
+	codepaged_found = False
+	for i in dirents.entries('cp866', False):
+		cnt += 1
+
+		assert type(i) is FAT.FileEntry
+
+		if i.short_name == '_sual.txt':
+			cnt_2 += 1
+
+			assert i.is_deleted and (not i.is_directory) and (i.long_name is None) and (i.size == 0)
+			assert i.is_encrypted
+			assert i.first_cluster == 12 and i.ntbyte == 0x19 and i.attributes == 0x20
+			assert i.atime == datetime.date(2021, 11, 13)
+			assert i.ctime > datetime.datetime(2021, 11, 13, 17, 21, 16) and i.ctime < datetime.datetime(2021, 11, 13, 17, 21, 17)
+			assert i.mtime == datetime.datetime(2021, 11, 13, 17, 19, 50)
+
+			ii = FAT.ExpandPath('/123', i)
+
+			assert ii.short_name == '/123/_sual.txt'
+			assert ii.is_deleted and (not ii.is_directory) and (ii.long_name is None) and (ii.size == 0)
+			assert ii.is_encrypted
+			assert ii.first_cluster == 12 and ii.ntbyte == 0x19 and ii.attributes == 0x20
+			assert ii.atime == datetime.date(2021, 11, 13)
+			assert ii.ctime > datetime.datetime(2021, 11, 13, 17, 21, 16) and ii.ctime < datetime.datetime(2021, 11, 13, 17, 21, 17)
+			assert ii.mtime == datetime.datetime(2021, 11, 13, 17, 19, 50)
+
+		if i.short_name == '$EFS':
+			cnt_2 += 1
+
+			assert (not i.is_deleted) and (not i.is_directory) and (i.long_name is None) and (i.size == 680)
+			assert not i.is_encrypted
+			assert i.first_cluster == 14 and i.ntbyte == 0 and i.attributes == 0x06
+			assert i.atime == datetime.date(2021, 11, 13)
+			assert i.ctime == datetime.datetime(2021, 11, 13, 17, 21, 33) + datetime.timedelta(milliseconds = 70)
+			assert i.mtime == datetime.datetime(2021, 11, 13, 17, 21, 34)
+
+			ii = FAT.ExpandPath('/123/', i)
+
+			assert ii.short_name == '/123/$EFS'
+			assert (not ii.is_deleted) and (not ii.is_directory) and (ii.long_name is None) and (ii.size == 680)
+			assert not ii.is_encrypted
+			assert ii.first_cluster == 14 and ii.ntbyte == 0 and ii.attributes == 0x06
+			assert ii.atime == datetime.date(2021, 11, 13)
+			assert ii.ctime == datetime.datetime(2021, 11, 13, 17, 21, 33) + datetime.timedelta(milliseconds = 70)
+			assert ii.mtime == datetime.datetime(2021, 11, 13, 17, 21, 34)
+
+		if 'ривет' in i.short_name.lower():
+			codepaged_found = True
+
+		if i.long_name is not None:
+			assert i.long_name == long_names.pop(0) 
+
+	assert cnt == 24
+	assert cnt_2 == 2
+	assert codepaged_found
+	assert len(long_names) == 0
+
+	buf = open(FAT_DIRENT_2, 'rb').read()
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	cnt = 0
+	cnt_2 = 0
+	for i in dirents.entries('ascii', False):
+		cnt += 1
+
+		assert type(i) is FAT.FileEntry
+
+		if i.short_name == '1':
+			cnt_2 += 1
+
+			assert (not i.is_deleted) and i.is_directory and (i.long_name is None) and (i.size == 0)
+			assert not i.is_encrypted
+			assert i.first_cluster == 4 and i.ntbyte == 0 and i.attributes == 0x10
+			assert i.atime == datetime.date(2020, 12, 10)
+			assert i.ctime == datetime.datetime(2021, 12, 1, 22, 53, 32)
+			assert i.mtime == datetime.datetime(2021, 12, 1, 22, 50, 48)
+
+			ii = FAT.ExpandPath('/123/', i)
+
+			assert ii.short_name == '/123/1'
+			assert (not ii.is_deleted) and ii.is_directory and (ii.long_name is None) and (ii.size == 0)
+			assert not ii.is_encrypted
+			assert ii.first_cluster == 4 and ii.ntbyte == 0 and ii.attributes == 0x10
+			assert ii.atime == datetime.date(2020, 12, 10)
+			assert ii.ctime == datetime.datetime(2021, 12, 1, 22, 53, 32)
+			assert ii.mtime == datetime.datetime(2021, 12, 1, 22, 50, 48)
+
+	assert cnt == 3
+	assert cnt_2 == 1
+
+	buf = open(FAT_DIRENT_3, 'rb').read()
+	buf += b'\x00' * (512 - len(buf))
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	cnt = 0
+	for i in dirents.entries('ascii', False):
+		cnt += 1
+
+		assert type(i) is FAT.FileEntry
+
+		if i.short_name == '32766.txt':
+			assert i.size == 4
+			assert i.first_cluster == 101672
+
+	assert cnt == 1
+
+def test_fat32_orphan_lfn():
+	buf = open(FAT_DIRENT_ORPHAN, 'rb').read()
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	cnt = 0
+	cnt_2 = 0
+	found_short = False
+	for i in dirents.entries('cp866', False):
+		cnt += 1
+
+		if type(i) is FAT.OrphanLongEntry:
+			cnt_2 += 1
+			assert i.long_name_partial == 'long_name_test.txt'
+
+			ii = FAT.ExpandPath('/123/', i)
+			assert ii.long_name_partial == '/123/long_name_test.txt'
+
+		if type(i) is FAT.FileEntry and i.short_name == 'SHORT.TXT' and i.long_name is None and not i.is_directory:
+			found_short = True
+			assert i.long_name is None
+
+			ii = FAT.ExpandPath('/123/', i)
+			assert ii.short_name == '/123/SHORT.TXT'
+
+	assert cnt == 20
+	assert cnt_2 == 1
+	assert found_short
+
+	buf = buf.replace(b'SHORT   TXT', b'\xE5HORT   TXT', 1)
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	cnt = 0
+	found_short = False
+	for i in dirents.entries('cp866', False):
+		cnt += 1
+
+		assert type(i) is FAT.FileEntry
+
+		if i.short_name == '_HORT.TXT' and not i.is_directory:
+			found_short = True
+			assert i.long_name == 'long_name_test.txt'
+
+	assert cnt == 19
+	assert found_short
+
+def test_fat32_verylong():
+	buf = open(FAT_DIRENT_VERYLONG, 'rb').read()
+
+	dirents = FAT.DirectoryEntries(buf)
+
+	long_names = [ 'АБВГДЕЖЗИЙКЛМНО' * 17, ('1БВГДЕЖЗИЙКЛМНО' * 17)[:-1], ('2БВГДЕЖЗИЙКЛМНО' * 17)[:-2],  ('3БВГДЕЖЗИЙКЛМНО' * 17)[:-3], 'Я' ]
+	cnt = 0
+	for i in dirents.entries('cp866', False):
+		cnt += 1
+
+		assert type(i) is FAT.FileEntry
+		assert i.is_encrypted is not None and not i.is_encrypted
+		assert i.long_name == long_names.pop(0) 
+
+	assert cnt == 5
+	assert len(long_names) == 0
+
+@pytest.mark.parametrize('step', [0, 1])
+def test_fat32_full(step):
+	if step == 0:
+		correct_off = 512
+		f = io.BytesIO(b'\x01' * 512 + tarfile.open(FAT_FULL_TEST, 'r').extractfile('fat32_full_test.raw').read())
+	else:
+		correct_off = 0
+
+		# This doesn't work:
+		#
+		#    f = tarfile.open(FAT_FULL_TEST, 'r').extractfile('fat32_full_test.raw')
+		#
+		# Looks like a bug:
+		#
+		# >>> import tarfile
+		# >>> f = tarfile.open('fat32_full_test.tgz', 'r').extractfile('fat32_full_test.raw')
+		# >>> b1 = f.read(512)
+		# >>> f.seek(0)
+		# 0
+		# >>> b2 = f.read(512)
+		# >>> __ = f.read()
+		# >>> f.seek(0)
+		# 0
+		# >>> b3 = f.read(512)
+		# >>> b1 == b2
+		# True
+		# >>> b2 == b3
+		# False
+		#
+		# A workaround is:
+
+		f = io.BytesIO(tarfile.open(FAT_FULL_TEST, 'r').extractfile('fat32_full_test.raw').read())
+
+	with pytest.raises(ValueError):
+		fs = FAT.FileSystemParser(f, correct_off, 1024*1024)
+		for i in fs.walk():
+			pass
+
+	with pytest.raises(FAT.BootSectorException):
+		fs = FAT.FileSystemParser(f, 1, 1024*1024)
+
+	results = open(FAT_FULL_TEST_RESULTS, 'rb').read().decode('utf-8').splitlines()
+
+	fs = FAT.FileSystemParser(f, correct_off, 536870912)
+
+	found_1 = False
+	found_2 = False
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if (item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..'))) or item.is_deleted:
+			continue
+
+		item_name = item.short_name
+		if item.long_name is not None:
+			item_name = item.long_name
+
+		mtime_local = item.mtime + datetime.timedelta(hours = 3)
+
+		result = results.pop(0)
+		assert result == item_name + '\t' + mtime_local.strftime('%Y-%m-%d+%H:%M:%S') + '.0000000000'
+
+		if item_name == '/111111/s1/s2/s3/s4/s6/s7/test.txt':
+			found_1 = True
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert buf == b'test\n'
+
+		if item_name == '/' + '1' * 248 + '/привет.txt':
+			found_2 = True
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert hashlib.md5(buf).hexdigest() == '989b1b15d9acb7c0101633a935100868'
+
+	assert len(results) == 0
+	assert found_1 and found_2
+
+	f.close()

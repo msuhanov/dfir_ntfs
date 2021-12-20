@@ -961,12 +961,16 @@ elif mode == '--usn':
 	csv_writer = csv.writer(output_file, dialect = 'excel')
 
 	process_usn()
+
+	input_mft.close()
 elif mode == '--log':
 	input_mft = open(sys.argv[2], 'rb')
 	input_file = open(sys.argv[3], 'rb')
 	output_file = open(sys.argv[4], 'w', encoding = 'utf-8')
 
 	process_log()
+
+	input_mft.close()
 elif mode == '--indx':
 	input_file = open(sys.argv[2], 'rb')
 	try:

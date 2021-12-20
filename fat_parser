@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+# dfir_ntfs: an NTFS parser for digital forensics & incident response
+# (c) Maxim Suhanov
+
+import sys
+import csv
+import datetime
+from dfir_ntfs.addons import FAT
+
+def format_timestamp(timestamp):
+	if timestamp is None:
+		return 'N/A'
+
+	if type(timestamp) is datetime.date:
+		return timestamp.strftime('%Y-%m-%d')
+
+	return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+def print_usage():
+	print('Extract information from FAT32 file systems')
+	print('')
+	print('Usage:')
+	print(' fat_parser <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
+
+if len(sys.argv) != 4:
+	print_usage()
+	sys.exit(0)
+
+input_file = open(sys.argv[1], 'rb')
+try:
+	input_offset = int(sys.argv[2])
+except ValueError:
+	print_usage()
+	sys.exit(0)
+
+output_file = open(sys.argv[3], 'w', newline = '', encoding = 'utf-8')
+csv_writer = csv.writer(output_file, dialect = 'excel')
+
+fs = FAT.FileSystemParser(input_file, input_offset)
+
+csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C/CH timestamp', 'File size', 'Is encrypted'])
+for item in fs.walk():
+	if type(item) is FAT.OrphanLongEntry:
+		csv_writer.writerow(['?', '?', item.long_name_partial, '?', '?', '?', '?', '?'])
+		continue
+
+	path = item.short_name
+	if item.long_name is not None:
+		path = item.long_name
+
+	csv_writer.writerow([item.is_deleted, item.is_directory, path, item.mtime, item.atime, item.ctime, item.size, item.is_encrypted])
+
+input_file.close()
+output_file.close()
