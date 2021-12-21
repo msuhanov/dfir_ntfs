@@ -14,7 +14,7 @@ dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 3. Timestamps
 
 All timestamps reported by the tools are in UTC.
-(For FAT file systems, all timestamps are local.)
+(For FAT file systems, all timestamps are local or UTC, returned as is.)
 
 The MACE notation is used:
 - modified (M),
