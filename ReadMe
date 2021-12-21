@@ -14,6 +14,7 @@ dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 3. Timestamps
 
 All timestamps reported by the tools are in UTC.
+(For FAT file systems, all timestamps are local.)
 
 The MACE notation is used:
 - modified (M),
@@ -21,7 +22,7 @@ The MACE notation is used:
 - created (C),
 - $MFT entry modified (E).
 
-In the WSL set of timestamps:
+In the WSL set of timestamps (and FAT):
 - inode changed (CH).
 
 4. License
