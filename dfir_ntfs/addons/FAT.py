@@ -1,10 +1,10 @@
 # dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 # (c) Maxim Suhanov
 #
-# This additional module implements an interface to work with FAT32 volumes.
+# This additional module implements an interface to work with FAT12/16/32 volumes.
 
 # [FATGEN 1.03] is:
-# Microsoft Extensible Firmware Initiative FAT32 File System Specification 
+# Microsoft Extensible Firmware Initiative FAT32 File System Specification
 # FAT: General Overview of On-Disk Format
 #
 # Version 1.03, December 6, 2000
@@ -26,11 +26,20 @@ PATH_SEPARATOR = '/'
 ClnShutBitMask32 = 0x08000000 # If set, the volume is clean.
 HrdErrBitMask32 = 0x04000000 # If set, no hard errors detected.
 
+ClnShutBitMask16 = 0x8000 # If set, the volume is clean.
+HrdErrBitMask16 = 0x4000 # If set, no hard errors detected.
+
 FAT_BS_DIRTY = 0x01 # The volume is dirty.
 FAT_BS_TEST_SURFACE = 0x02 # The volume has media errors.
 
 FAT32_EOC = 0x0FFFFFF8 # End of chain.
 FAT32_BAD = 0x0FFFFFF7 # Bad cluster.
+
+FAT16_EOC = 0xFFF8 # End of chain.
+FAT16_BAD = 0xFFF7 # Bad cluster.
+
+FAT12_EOC = 0x0FF8 # End of chain.
+FAT12_BAD = 0x0FF7 # Bad cluster.
 
 # File attributes:
 ATTR_READ_ONLY = 0x01
@@ -80,11 +89,26 @@ def ResolveFileAttributes(FileAttributes):
 
 	return ' | '.join(str_list)
 
-def GetCountOfClusters32(BSBPB):
-	"""Calculate and return the number of data clusters in the FAT32 file system."""
+def IsVolumeLabel(FileAttributes):
+	"""Check if given file attributes describe a volume label."""
 
-	BSBPB.get_bpb_totsec16()
-	BSBPB.get_bpb_fatsz16()
+	if FileAttributes & ATTR_LONG_NAME_MASK == ATTR_LONG_NAME: # This is a long file name.
+		return False
+
+	if FileAttributes & (ATTR_DIRECTORY | ATTR_VOLUME_ID) == ATTR_VOLUME_ID: # This is a volume label.
+		return True
+
+	return False
+
+def GetCountOfClusters(BSBPB):
+	"""Calculate and return the number of data clusters in the FAT12/16/32 file system."""
+
+	if BSBPB.get_bpb_totsec16() > 0 and BSBPB.get_bpb_fatsz16() > 0:
+		RootDirSectors = (BSBPB.get_bpb_rootentcnt() * 32 + BSBPB.get_bpb_bytspersec() - 1) // BSBPB.get_bpb_bytspersec()
+		DataSec = BSBPB.get_bpb_totsec16() - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz16() + RootDirSectors)
+		CountofClusters = DataSec // BSBPB.get_bpb_secperclus()
+
+		return CountofClusters
 
 	DataSec = BSBPB.get_bpb_totsec32() - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz32())
 	CountofClusters = DataSec // BSBPB.get_bpb_secperclus()
@@ -94,7 +118,18 @@ def GetCountOfClusters32(BSBPB):
 def IsFileSystem32(BSBPB):
 	"""Check if a given BSBPB object belongs to the FAT32 file system."""
 
-	return GetCountOfClusters32(BSBPB) >= 65525
+	return GetCountOfClusters(BSBPB) >= 65525
+
+def IsFileSystem16(BSBPB):
+	"""Check if a given BSBPB object belongs to the FAT16 file system."""
+
+	CountOfClusters = GetCountOfClusters(BSBPB)
+	return CountOfClusters < 65525 and CountOfClusters >= 4085
+
+def IsFileSystem12(BSBPB):
+	"""Check if a given BSBPB object belongs to the FAT12 file system."""
+
+	return GetCountOfClusters(BSBPB) < 4085
 
 def ValidateShortName(Name):
 	"""Validate a given short (8.3) name.
@@ -103,7 +138,7 @@ def ValidateShortName(Name):
 
 	# A special case to consider: "EA DATA  SF".
 	# This file contains extended attributes set by the Microsoft implementation (tested on a Windows XP installation).
-	# However, extended attributes can exist in FAT12/FAT16 volumes only.
+	# However, extended attributes can exist in FAT12/16 volumes only.
 	# In the current versions of the FAT driver, extended attributes are not supported.
 	# This case is special because some tools fail to display that file.
 
@@ -323,11 +358,10 @@ class DirectoryEntriesException(FileSystemException):
 	pass
 
 class BSBPB(object):
-	"""This class is used to work with a boot sector (BS) containing a BIOS parameter block (BPB).
-	Only FAT32 is supported.
-	"""
+	"""This class is used to work with a boot sector (BS) containing a BIOS parameter block (BPB)."""
 
 	bs_buf = None
+	is_fat32 = None
 
 	def __init__(self, bs_buf):
 		self.bs_buf = bs_buf
@@ -338,12 +372,16 @@ class BSBPB(object):
 		if self.get_signature() != b'\x55\xaa':
 			raise BootSectorException('Invalid boot sector signature')
 
-		if not IsFileSystem32(self):
-			# Actually, the same exception type is expected to be raised before this check.
-			# However, this is a primary check for the file system type.
-			raise BootSectorException('Invalid file system type (not FAT32)')
-
-		self.get_bpb_fsver()
+		# First, assume FAT32.
+		self.is_fat32 = True
+		try:
+			if IsFileSystem32(self):
+				self.get_bpb_fsver()
+		except BootSectorException:
+			# Then, try FAT12/16.
+			self.is_fat32 = False
+			if not (IsFileSystem16(self) or IsFileSystem12(self)):
+				raise BootSectorException('Unsupported file system (not FAT12/16/32)')
 
 	def get_bs_jmpboot(self):
 		"""Get and return the first 3 bytes."""
@@ -392,23 +430,19 @@ class BSBPB(object):
 		return fats
 
 	def get_bpb_rootentcnt(self):
-		"""Get and return the number of entries in the root directory.
-		This must be zero for FAT32.
-		"""
+		"""Get and return the number of entries in the root directory."""
 
 		cnt = struct.unpack('<H', self.bs_buf[17 : 19])[0]
-		if cnt > 0:
+		if cnt > 0 and self.is_fat32:
 			raise BootSectorException('Invalid number of root entries')
 
 		return cnt
 
 	def get_bpb_totsec16(self):
-		"""Get and return the 16-bit number of sectors on the volume.
-		This must be zero for FAT32.
-		"""
+		"""Get and return the 16-bit number of sectors on the volume."""
 
 		tot = struct.unpack('<H', self.bs_buf[19 : 21])[0]
-		if tot > 0:
+		if tot > 0 and self.is_fat32:
 			raise BootSectorException('Invalid number (16) of total sectors')
 
 		return tot
@@ -423,12 +457,10 @@ class BSBPB(object):
 		return media
 
 	def get_bpb_fatsz16(self):
-		"""Get and return the 16-bit number of sectors in one FAT.
-		This must be zero for FAT32.
-		"""
+		"""Get and return the 16-bit number of sectors in one FAT."""
 
 		cnt = struct.unpack('<H', self.bs_buf[22 : 24])[0]
-		if cnt > 0:
+		if cnt > 0 and self.is_fat32:
 			raise BootSectorException('Invalid number (16) of FAT sectors')
 
 		return cnt
@@ -449,12 +481,10 @@ class BSBPB(object):
 		return struct.unpack('<L', self.bs_buf[28 : 32])[0]
 
 	def get_bpb_totsec32(self):
-		"""Get and return the 32-bit number of sectors on the volume.
-		This must be non-zero for FAT32.
-		"""
+		"""Get and return the 32-bit number of sectors on the volume."""
 
 		tot = struct.unpack('<L', self.bs_buf[32 : 36])[0]
-		if tot == 0:
+		if tot == 0 and self.is_fat32:
 			raise BootSectorException('Invalid number of total sectors')
 
 		return tot
@@ -465,9 +495,10 @@ class BSBPB(object):
 		return self.bs_buf[510 : 512]
 
 	def get_bpb_fatsz32(self):
-		"""Get and return the 32-bit number of sectors in one FAT.
-		This must be non-zero for FAT32.
-		"""
+		"""Get and return the 32-bit number of sectors in one FAT."""
+
+		if not self.is_fat32:
+			return
 
 		cnt = struct.unpack('<L', self.bs_buf[36 : 40])[0]
 		if cnt == 0:
@@ -477,6 +508,9 @@ class BSBPB(object):
 
 	def get_bpb_extflags(self):
 		"""Get and return the flags as a tuple: (active_fat_number, is_fat_mirroring_disabled)."""
+
+		if not self.is_fat32:
+			return (None, None)
 
 		flags = struct.unpack('<H', self.bs_buf[40 : 42])[0]
 
@@ -490,6 +524,9 @@ class BSBPB(object):
 		This must be zero (0.0).
 		"""
 
+		if not self.is_fat32:
+			return
+
 		fsver = struct.unpack('<H', self.bs_buf[42 : 44])[0]
 		if fsver != 0:
 			raise NotImplementedError('File system version is not supported: {}'.format(hex(fsver)))
@@ -498,6 +535,9 @@ class BSBPB(object):
 
 	def get_bpb_rootclus(self):
 		"""Get and return the root cluster."""
+
+		if not self.is_fat32:
+			return
 
 		rootclus = struct.unpack('<L', self.bs_buf[44 : 48])[0]
 		if rootclus < 2:
@@ -508,10 +548,16 @@ class BSBPB(object):
 	def get_bpb_fsinfo(self):
 		"""Get and return the file system information sector number."""
 
+		if not self.is_fat32:
+			return
+
 		return struct.unpack('<H', self.bs_buf[48 : 50])[0]
 
 	def get_bpb_bkbootsec(self):
 		"""Get and return the backup boot sector."""
+
+		if not self.is_fat32:
+			return
 
 		bk = struct.unpack('<H', self.bs_buf[50 : 52])[0]
 		if bk == 0:
@@ -522,10 +568,16 @@ class BSBPB(object):
 	def get_bpb_reserved(self):
 		"""Get and return the reserved area (as raw bytes)."""
 
+		if not self.is_fat32:
+			return
+
 		return self.bs_buf[52 : 64]
 
 	def get_bs_drvnum(self):
 		"""Get and return the drive number."""
+
+		if not self.is_fat32:
+			return struct.unpack('<B', self.bs_buf[36 : 37])[0]
 
 		return struct.unpack('<B', self.bs_buf[64 : 65])[0]
 
@@ -533,6 +585,9 @@ class BSBPB(object):
 		"""Get and return the dirty flags."""
 
 		# According to [FATGEN 1.03], this field is reserved, but it is not.
+
+		if not self.is_fat32:
+			return struct.unpack('<B', self.bs_buf[37 : 38])[0]
 
 		return struct.unpack('<B', self.bs_buf[65 : 66])[0]
 
@@ -549,6 +604,9 @@ class BSBPB(object):
 	def get_bs_bootsig(self):
 		"""Get and return the boot signature."""
 
+		if not self.is_fat32:
+			return struct.unpack('<B', self.bs_buf[38 : 39])[0]
+
 		return struct.unpack('<B', self.bs_buf[66 : 67])[0]
 
 	def get_bs_extfields(self):
@@ -560,9 +618,14 @@ class BSBPB(object):
 		if self.get_bs_bootsig() != 0x29:
 			return (None, None, None)
 
-		volume_id = struct.unpack('<L', self.bs_buf[67 : 71])[0]
-		volume_label = self.bs_buf[71 : 82]
-		fs_type = self.bs_buf[82 : 90]
+		if self.is_fat32:
+			volume_id = struct.unpack('<L', self.bs_buf[67 : 71])[0]
+			volume_label = self.bs_buf[71 : 82]
+			fs_type = self.bs_buf[82 : 90]
+		else:
+			volume_id = struct.unpack('<L', self.bs_buf[39 : 43])[0]
+			volume_label = self.bs_buf[43 : 54]
+			fs_type = self.bs_buf[54 : 62]
 
 		return (volume_id, volume_label, fs_type)
 
@@ -570,6 +633,14 @@ class BSBPB(object):
 		"""Calculate and return the offset and size of the active FAT (plus, the last valid data cluster).
 		A tuple is returned: (offset_in_bytes, size_in_bytes, last_data_cluster_plus_one).
 		"""
+
+		if not self.is_fat32:
+			# Use FAT 0.
+			offset_in_bytes = self.get_bpb_rsvdseccnt() * self.get_bpb_bytspersec()
+			size_in_bytes = self.get_bpb_fatsz16() * self.get_bpb_bytspersec()
+			last_data_cluster_plus_one = GetCountOfClusters(self) + 1
+
+			return (offset_in_bytes, size_in_bytes, last_data_cluster_plus_one)
 
 		active_fat_number, is_fat_mirroring_disabled = self.get_bpb_extflags()
 
@@ -582,7 +653,7 @@ class BSBPB(object):
 
 		offset_in_bytes = (self.get_bpb_rsvdseccnt() + self.get_bpb_fatsz32() * fat_num) * self.get_bpb_bytspersec()
 		size_in_bytes = self.get_bpb_fatsz32() * self.get_bpb_bytspersec()
-		last_data_cluster_plus_one = GetCountOfClusters32(self) + 1
+		last_data_cluster_plus_one = GetCountOfClusters(self) + 1
 
 		return (offset_in_bytes, size_in_bytes, last_data_cluster_plus_one)
 
@@ -633,18 +704,40 @@ class FSINFO(object):
 		return 'FSINFO'
 
 class FAT(object):
-	"""This class is used to work with a file allocation table (32-bit)."""
+	"""This class is used to work with a file allocation table (12/16/32-bit)."""
 
 	fat_object = None
 	fat_offset = None
 	fat_size = None
 	last_valid_cluster = None
+	fat_type = None
 
-	def __init__(self, fat_object, fat_offset, fat_size, last_valid_cluster):
+	fat_eoc = None
+	fat_bad = None
+	fat_element_size = None
+
+	def __init__(self, fat_object, fat_offset, fat_size, last_valid_cluster, fat_type = 32):
 		self.fat_object = fat_object
 		self.fat_offset = fat_offset
 		self.fat_size = fat_size
 		self.last_valid_cluster = last_valid_cluster
+		self.fat_type = fat_type
+
+		if self.fat_type not in [ 12, 16, 32 ]:
+			raise ValueError('Unknown FAT type, known types are: 12, 16 or 32')
+
+		if self.fat_type == 32:
+			self.fat_eoc = FAT32_EOC
+			self.fat_bad = FAT32_BAD
+			self.fat_element_size = 4
+		elif self.fat_type == 16:
+			self.fat_eoc = FAT16_EOC
+			self.fat_bad = FAT16_BAD
+			self.fat_element_size = 2
+		else:
+			self.fat_eoc = FAT12_EOC
+			self.fat_bad = FAT12_BAD
+			self.fat_element_size = 1.5
 
 		if self.fat_offset > 0 and self.fat_offset % 512 != 0:
 			raise FileAllocationTableException('Invalid FAT offset: {}'.format(self.fat_offset))
@@ -652,13 +745,45 @@ class FAT(object):
 		if self.fat_size < 512 or self.fat_size % 512 != 0:
 			raise FileAllocationTableException('Invalid FAT size: {}'.format(self.fat_size))
 
+	def get_element(self, number):
+		"""Get and return the FAT entry by its number."""
+
+		if self.fat_element_size in [2, 4]: # FAT16/32.
+			fat_item_offset = number * self.fat_element_size
+			if fat_item_offset + self.fat_element_size > self.fat_size or number > self.last_valid_cluster:
+				raise FileAllocationTableException('Out of bounds, FAT element: {}'.format(number))
+
+			self.fat_object.seek(self.fat_offset + fat_item_offset)
+			next_element_raw = self.fat_object.read(self.fat_element_size)
+			if len(next_element_raw) != self.fat_element_size:
+				raise FileAllocationTableException('Truncated FAT entry, FAT element: {}'.format(number))
+
+			if self.fat_element_size == 4:
+				next_cluster = struct.unpack('<L', next_element_raw)[0] & 0x0FFFFFFF # The high 4 bits are reserved.
+			else:
+				next_cluster = struct.unpack('<H', next_element_raw)[0]
+		else: # FAT12.
+			fat_item_offset = number + number // 2
+			if fat_item_offset + 2 > self.fat_size or number > self.last_valid_cluster:
+				raise FileAllocationTableException('Out of bounds, FAT element: {}'.format(number))
+
+			self.fat_object.seek(self.fat_offset + fat_item_offset)
+			next_element_raw = self.fat_object.read(2)
+			if len(next_element_raw) != 2:
+				raise FileAllocationTableException('Truncated FAT entry, FAT element: {}'.format(number))
+
+			next_item = struct.unpack('<H', next_element_raw)[0]
+			if number % 2 == 0:
+				next_cluster = next_item & 0x0FFF
+			else:
+				next_cluster = next_item >> 4
+
+		return next_cluster
+
 	def get_bpb_media(self):
 		"""Get and return the BPB media value."""
 
-		self.fat_object.seek(self.fat_offset)
-		fat_0_raw = self.fat_object.read(4)
-		fat_0 = struct.unpack('<L', fat_0_raw)[0]
-
+		fat_0 = self.get_element(0)
 		return fat_0 & 0xFF
 
 	# Do not use two methods below. The FAT[1] entry is "broken".
@@ -686,22 +811,30 @@ class FAT(object):
 	# So, this looks like a typo in the Windows driver. This goes back to Windows 2000 (or even to an earlier version).
 
 	def is_volume_dirty(self):
-		"""Check if the dirty bit is set. Do not use!"""
+		"""Check if the dirty bit is set (FAT16/32). Do not use!"""
 
-		self.fat_object.seek(self.fat_offset + 4)
-		fat_1_raw = self.fat_object.read(4)
-		fat_1 = struct.unpack('<L', fat_1_raw)[0]
+		if self.fat_type == 12:
+			return
 
-		return (fat_1 & ClnShutBitMask32) == 0
+		fat_1 = self.get_element(1)
+
+		if self.fat_type == 32:
+			return (fat_1 & ClnShutBitMask32) == 0
+		else:
+			return (fat_1 & ClnShutBitMask16) == 0
 
 	def are_hard_errors_detected(self):
-		"""Check if hard errors bit is set. Do not use!"""
+		"""Check if hard errors bit is set (FAT16/32). Do not use!"""
 
-		self.fat_object.seek(self.fat_offset + 4)
-		fat_1_raw = self.fat_object.read(4)
-		fat_1 = struct.unpack('<L', fat_1_raw)[0]
+		if self.fat_type == 12:
+			return
 
-		return (fat_1 & HrdErrBitMask32) == 0
+		fat_1 = self.get_element(1)
+
+		if self.fat_type == 32:
+			return (fat_1 & HrdErrBitMask32) == 0
+		else:
+			return (fat_1 & HrdErrBitMask16) == 0
 
 	def chain(self, first_cluster):
 		"""Get and return the cluster chain for the given first cluster (as a list of cluster numbers).
@@ -716,7 +849,7 @@ class FAT(object):
 			# This cluster is reserved, no chain.
 			return []
 
-		if first_cluster == FAT32_BAD:
+		if first_cluster == self.fat_bad:
 			# The first cluster is bad.
 			raise FileAllocationTableException('Bad starting cluster {}'.format(first_cluster))
 
@@ -724,24 +857,15 @@ class FAT(object):
 
 		curr_cluster = first_cluster
 		while True:
-			fat_item_offset = curr_cluster * 4
-			if fat_item_offset > self.fat_size or curr_cluster > self.last_valid_cluster:
-				raise FileAllocationTableException('Out of bounds, cluster {}'.format(curr_cluster))
-
-			self.fat_object.seek(self.fat_offset + fat_item_offset)
-			next_cluster_raw = self.fat_object.read(4)
-			if len(next_cluster_raw) != 4:
-				raise FileAllocationTableException('Truncated FAT entry, cluster {}'.format(curr_cluster))
-
-			next_cluster = struct.unpack('<L', next_cluster_raw)[0] & 0x0FFFFFFF # The high 4 bits are reserved.
+			next_cluster = self.get_element(curr_cluster)
 
 			if next_cluster in chain: # This is a loop, the FAT is corrupted, stop (but do not raise an exception).
 				break
 
-			if next_cluster >= FAT32_EOC:
+			if next_cluster >= self.fat_eoc:
 				# End of chain, stop.
 				break
-			elif next_cluster == FAT32_BAD:
+			elif next_cluster == self.fat_bad:
 				# Bad cluster, use None and stop.
 				chain.append(None)
 				break
@@ -758,7 +882,7 @@ class FAT(object):
 		return chain
 
 	def __str__(self):
-		return 'FAT (32-bit)'
+		return 'FAT'
 
 # Here, "ctime" means "created time" or "inode changed time".
 # In Windows and macOS, it is "created time".
@@ -804,12 +928,15 @@ class DirectoryEntries(object):
 	"""This class is used to work with directory entries."""
 
 	clusters_buf = None
+	is_fat32 = None
 
-	def __init__(self, clusters_buf):
+	def __init__(self, clusters_buf, is_fat32 = True):
 		self.clusters_buf = clusters_buf
 
 		if len(self.clusters_buf) < 512 or len(self.clusters_buf) % 512 != 0:
 			raise DirectoryEntriesException('Invalid buffer size: {}'.format(len(self.clusters_buf)))
+
+		self.is_fat32 = is_fat32
 
 	def entries(self, encoding = 'ascii', short_only = False):
 		"""Get, decode and return directory entries in the clusters (as named tuples: FileEntry; also, if the 'short_only' argument is False: OrphanLongEntry).
@@ -971,8 +1098,11 @@ class DirectoryEntries(object):
 
 			adate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 18 : pos + 20])[0])
 
-			# As a side note: this field points to an extended attribute in FAT12/FAT16 volumes.
-			first_cluster_hi = struct.unpack('<H', self.clusters_buf[pos + 20 : pos + 22])[0]
+			# This field points to an extended attribute in FAT12/16 volumes. This is not supported.
+			if self.is_fat32:
+				first_cluster_hi = struct.unpack('<H', self.clusters_buf[pos + 20 : pos + 22])[0]
+			else:
+				first_cluster_hi = 0
 
 			mtime_fat = DecodeFATTime(struct.unpack('<H', self.clusters_buf[pos + 22 : pos + 24])[0])
 			mdate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 24 : pos + 26])[0])
@@ -1008,7 +1138,7 @@ class DirectoryEntries(object):
 		return 'DirectoryEntries'
 
 class FileSystemParser(object):
-	"""This class is used to read and parse a FAT32 file system (volume)."""
+	"""This class is used to read and parse a FAT12/16/32 file system (volume)."""
 
 	volume_object = None
 	"""A file object for a volume."""
@@ -1031,6 +1161,9 @@ class FileSystemParser(object):
 	data_area_offset = None
 	"""Offset of data area (in bytes, relative to the first byte of the volume)."""
 
+	fat_type = None
+	"""A volume type (12, 16 or 32)."""
+
 	def __init__(self, volume_object, volume_offset, volume_size = None):
 		self.volume_object = volume_object
 		self.volume_offset = volume_offset
@@ -1043,12 +1176,25 @@ class FileSystemParser(object):
 		bs_buf = self.volume_object.read(512)
 		self.bsbpb = BSBPB(bs_buf)
 
+		if IsFileSystem32(self.bsbpb):
+			self.fat_type = 32
+		elif IsFileSystem16(self.bsbpb):
+			self.fat_type = 16
+		elif IsFileSystem12(self.bsbpb):
+			self.fat_type = 12
+		else:
+			raise ValueError('Unknown FAT type (not FAT12/16/32)')
+
 		self.cluster_size = self.bsbpb.get_bpb_bytspersec() * self.bsbpb.get_bpb_secperclus()
 
 		offset_in_bytes, size_in_bytes, last_data_cluster_plus_one = self.bsbpb.fat_offset_and_size()
-		self.fat = FAT(self.volume_object, self.volume_offset + offset_in_bytes, size_in_bytes, last_data_cluster_plus_one)
+		self.fat = FAT(self.volume_object, self.volume_offset + offset_in_bytes, size_in_bytes, last_data_cluster_plus_one, self.fat_type)
 
-		self.data_area_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_numfats() * self.bsbpb.get_bpb_fatsz32()) * self.bsbpb.get_bpb_bytspersec()
+		if self.fat_type == 32:
+			self.data_area_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_numfats() * self.bsbpb.get_bpb_fatsz32()) * self.bsbpb.get_bpb_bytspersec()
+		else:
+			root_sectors_count = (self.bsbpb.get_bpb_rootentcnt() * 32 + self.bsbpb.get_bpb_bytspersec() - 1) // self.bsbpb.get_bpb_bytspersec()
+			self.data_area_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_numfats() * self.bsbpb.get_bpb_fatsz16() + root_sectors_count) * self.bsbpb.get_bpb_bytspersec()
 
 	def read_chain(self, first_cluster, file_size = None):
 		"""Read clusters in a chain described by its first cluster, return them (as raw bytes).
@@ -1097,7 +1243,7 @@ class FileSystemParser(object):
 		"""Walk over the file system, return tuples (FileEntry and OrphanLongEntry)."""
 
 		def process_buf(buf, parent_path):
-			dir_entries = DirectoryEntries(buf)
+			dir_entries = DirectoryEntries(buf, self.fat_type == 32)
 
 			for dir_entry in dir_entries.entries(encoding, False):
 				if type(dir_entry) is OrphanLongEntry:
@@ -1117,8 +1263,13 @@ class FileSystemParser(object):
 							yield item
 
 
-		curr = self.bsbpb.get_bpb_rootclus()
-		buf = self.read_chain(curr)
+		if self.fat_type == 32:
+			curr = self.bsbpb.get_bpb_rootclus()
+			buf = self.read_chain(curr)
+		else:
+			root_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_fatsz16() * self.bsbpb.get_bpb_numfats()) * self.bsbpb.get_bpb_bytspersec()
+			self.volume_object.seek(self.volume_offset + root_offset)
+			buf = self.volume_object.read(self.bsbpb.get_bpb_rootentcnt() * 32)
 
 		for item in process_buf(buf, ''):
 			yield item

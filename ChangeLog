@@ -1,7 +1,15 @@
+Version: 1.1.1
+
+Add support for FAT12/FAT16 volumes.
+Minor changes.
+
+---
+
 Version: 1.1.0
 
 Add an additional module to work with FAT32 volumes.
 Add a tool to parse FAT32 volumes.
+Add a method to handle trust levels of reparse points.
 Minor changes.
 
 ---

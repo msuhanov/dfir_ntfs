@@ -141,6 +141,10 @@ FAT_DIRENT_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat32_dirent_orphan_lfn.bin')
 FAT_DIRENT_VERYLONG = os.path.join(TEST_DATA_DIR, 'fat32_dirent_verylong.bin')
 FAT_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat32_full_test.tgz')
 FAT_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat32_full_test.txt')
+FAT12_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat12.raw.gz')
+FAT16_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat16.raw.gz')
+FAT12_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat12_full_test.txt')
+FAT16_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat16_full_test.txt')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -3594,7 +3598,7 @@ def test_shadow_two_volumes_2():
 	buf = f.read(52272)
 	assert buf.strip(b'3') == b''
 
-def test_fat32_bs_bpb():
+def test_fat_bs_bpb():
 	with open(FAT_BS, 'rb') as f:
 		b = FAT.BSBPB(f.read(512))
 
@@ -3628,9 +3632,29 @@ def test_fat32_bs_bpb():
 
 	assert b.get_bs_extfields() == (0x4E42EF07, b'NO NAME    ', b'FAT32   ')
 
-	with pytest.raises(FAT.BootSectorException):
-		with open(FAT12_BS, 'rb') as f:
-			b = FAT.BSBPB(f.read(512))
+	with open(FAT12_BS, 'rb') as f:
+		b = FAT.BSBPB(f.read(512))
+
+	assert FAT.IsFileSystem12(b)
+	assert b.get_bs_oemname() == b'mkfs.fat'
+	assert b.get_bpb_numfats() == 2
+	assert b.get_bpb_rootentcnt() == 512
+	assert b.get_bpb_totsec16() == 2048
+	assert b.get_bpb_media() == 0xF8
+	assert b.get_bpb_fatsz16() == 2
+	assert b.get_bpb_hiddsec() == 0
+	assert b.get_bpb_totsec32() == 0
+
+	assert b.get_bpb_fatsz32() is None
+	assert b.get_bpb_extflags() == (None, None)
+	assert b.get_bpb_fsver() is None
+	assert b.get_bpb_rootclus() is None
+	assert b.get_bpb_fsinfo() is None
+	assert b.get_bpb_bkbootsec() is None
+	assert b.get_bpb_reserved() is None
+	assert b.get_bs_drvnum() == 0x80
+	assert b.is_volume_dirty() == (False, False)
+	assert b.get_bs_extfields() == (0x94A7FD0F, b'NO NAME    ', b'FAT12   ')
 
 def test_fat32_bs_bpb_dirty():
 	with open(FAT_BS_DIRTY, 'rb') as f:
@@ -3961,3 +3985,109 @@ def test_fat32_full(step):
 	assert found_1 and found_2
 
 	f.close()
+
+def test_fat12_full():
+	f = gzip.open(FAT12_FULL_TEST, 'rb')
+
+	with pytest.raises(ValueError):
+		fs = FAT.FileSystemParser(f, 0, 1024*1024)
+		for i in fs.walk():
+			pass
+
+	with pytest.raises(FAT.BootSectorException):
+		fs = FAT.FileSystemParser(f, 1, 1024*1024)
+
+	results = open(FAT12_FULL_TEST_RESULTS, 'rb').read().decode('utf-8').splitlines()
+
+	fs = FAT.FileSystemParser(f, 0, 4194304)
+	assert FAT.IsFileSystem12(fs.bsbpb)
+
+	found_1 = False
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if (item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..'))) or item.is_deleted:
+			continue
+
+		item_name = item.short_name
+		if item.long_name is not None:
+			item_name = item.long_name
+
+		mtime_local = item.mtime + datetime.timedelta(hours = 3)
+
+		result = results.pop(0)
+		assert result == item_name + '\t' + mtime_local.strftime('%Y-%m-%d+%H:%M:%S') + '.0000000000'
+
+		if item_name == '/265/find_me.txt':
+			found_1 = True
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert buf == b'\xFE' * 8192 + b'the end'
+
+
+	assert len(results) == 0
+	assert found_1
+
+	f.close()
+
+def test_fat16_full():
+	f = gzip.open(FAT16_FULL_TEST, 'rb')
+
+	with pytest.raises(ValueError):
+		fs = FAT.FileSystemParser(f, 0, 1024*1024)
+		for i in fs.walk():
+			pass
+
+	with pytest.raises(FAT.BootSectorException):
+		fs = FAT.FileSystemParser(f, 1, 1024*1024)
+
+	results = open(FAT16_FULL_TEST_RESULTS, 'rb').read().decode('utf-8').splitlines()
+
+	fs = FAT.FileSystemParser(f, 0, 12582912)
+	assert FAT.IsFileSystem16(fs.bsbpb)
+
+	found_1 = False
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if (item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..'))) or item.is_deleted:
+			continue
+
+		item_name = item.short_name
+		if item.long_name is not None:
+			item_name = item.long_name
+
+		mtime_local = item.mtime + datetime.timedelta(hours = 3)
+
+		result = results.pop(0)
+		assert result == item_name + ' ' + mtime_local.strftime('%Y-%m-%d+%H:%M:%S') + '.0000000000'
+
+		if item_name == '/265/find_me.txt':
+			found_1 = True
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert buf == b'\xFE' * 8192 + b'the end'
+
+
+	assert len(results) == 0
+	assert found_1
+
+	f.close()
+
+def test_fat_ea():
+	dirent = b'\x54\x45\x53\x54\x20\x20\x20\x20\x20\x20\x20\x30\x08\x7B\x08\x38'
+	dirent += b'\x8D\x53\x8D\x53\x02\x00\x55\x38\x8D\x53\x05\x00\x00\x00\x00\x00'
+
+	assert len(dirent) == 32
+
+	buf = dirent * 16
+
+	d = FAT.DirectoryEntries(buf, False)
+	for i in d.entries():
+		break
+
+	assert i.first_cluster == 5
+
+	d = FAT.DirectoryEntries(buf, True)
+	for i in d.entries():
+		break
+
+	assert i.first_cluster == (2 << 16 | 5)

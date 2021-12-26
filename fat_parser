@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# dfir_ntfs: an NTFS parser for digital forensics & incident response
+# dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 # (c) Maxim Suhanov
 
 import sys
@@ -18,7 +18,7 @@ def format_timestamp(timestamp):
 	return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
 
 def print_usage():
-	print('Extract information from FAT32 file systems')
+	print('Extract information from FAT12/16/32 file systems')
 	print('')
 	print('Usage:')
 	print(' fat_parser <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
@@ -39,10 +39,18 @@ csv_writer = csv.writer(output_file, dialect = 'excel')
 
 fs = FAT.FileSystemParser(input_file, input_offset)
 
+found_label = False
+
 csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C/CH timestamp', 'File size', 'Is encrypted'])
 for item in fs.walk():
 	if type(item) is FAT.OrphanLongEntry:
 		csv_writer.writerow(['?', '?', item.long_name_partial, '?', '?', '?', '?', '?'])
+		continue
+
+	if (not found_label) and (not item.is_deleted) and FAT.IsVolumeLabel(item.attributes):
+		found_label = True
+		path = item.short_name + ' (Volume Label)'
+		csv_writer.writerow([item.is_deleted, item.is_directory, path, item.mtime, item.atime, item.ctime, item.size, item.is_encrypted])
 		continue
 
 	path = item.short_name
