@@ -103,14 +103,18 @@ def IsVolumeLabel(FileAttributes):
 def GetCountOfClusters(BSBPB):
 	"""Calculate and return the number of data clusters in the FAT12/16/32 file system."""
 
-	if BSBPB.get_bpb_totsec16() > 0 and BSBPB.get_bpb_fatsz16() > 0:
+	totsec = BSBPB.get_bpb_totsec16()
+	if totsec == 0:
+		totsec = BSBPB.get_bpb_totsec32()
+
+	if BSBPB.get_bpb_fatsz16() > 0:
 		RootDirSectors = (BSBPB.get_bpb_rootentcnt() * 32 + BSBPB.get_bpb_bytspersec() - 1) // BSBPB.get_bpb_bytspersec()
-		DataSec = BSBPB.get_bpb_totsec16() - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz16() + RootDirSectors)
+		DataSec = totsec - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz16() + RootDirSectors)
 		CountofClusters = DataSec // BSBPB.get_bpb_secperclus()
 
 		return CountofClusters
 
-	DataSec = BSBPB.get_bpb_totsec32() - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz32())
+	DataSec = totsec - (BSBPB.get_bpb_rsvdseccnt() + BSBPB.get_bpb_numfats() * BSBPB.get_bpb_fatsz32())
 	CountofClusters = DataSec // BSBPB.get_bpb_secperclus()
 
 	return CountofClusters
@@ -129,7 +133,8 @@ def IsFileSystem16(BSBPB):
 def IsFileSystem12(BSBPB):
 	"""Check if a given BSBPB object belongs to the FAT12 file system."""
 
-	return GetCountOfClusters(BSBPB) < 4085
+	CountOfClusters = GetCountOfClusters(BSBPB)
+	return CountOfClusters < 4085 and CountOfClusters > 0
 
 def ValidateShortName(Name):
 	"""Validate a given short (8.3) name.
@@ -363,14 +368,15 @@ class BSBPB(object):
 	bs_buf = None
 	is_fat32 = None
 
-	def __init__(self, bs_buf):
+	def __init__(self, bs_buf, relaxed_checks = False):
 		self.bs_buf = bs_buf
 
 		if len(self.bs_buf) != 512:
 			raise BootSectorException('Invalid boot sector size')
 
-		if self.get_signature() != b'\x55\xaa':
-			raise BootSectorException('Invalid boot sector signature')
+		if not relaxed_checks:
+			if self.get_signature() != b'\x55\xaa':
+				raise BootSectorException('Invalid boot sector signature')
 
 		# First, assume FAT32.
 		self.is_fat32 = True
@@ -881,6 +887,11 @@ class FAT(object):
 
 		return chain
 
+	def is_allocated(self, cluster):
+		"""Check if a given cluster is marked as allocated."""
+
+		return self.get_element(cluster) != 0
+
 	def __str__(self):
 		return 'FAT'
 
@@ -993,11 +1004,16 @@ class DirectoryEntries(object):
 		prev_long_order = None
 		prev_long_checksum = None
 
+		found_null = False
+
 		pos = 0
 		while pos < len(self.clusters_buf):
 			long_name = None
 
 			attributes = self.clusters_buf[pos + 11] & 0x3F # Remove the upper two bits.
+
+			if self.clusters_buf[pos] == 0x00: # We found a null directory entry. Now, all subsequent directory entries should be reported as unallocated (or "unknown").
+				found_null = True
 
 			if attributes & ATTR_LONG_NAME_MASK == ATTR_LONG_NAME: # Looks like a long name entry.
 				if short_only: # But we do not need it, so skip.
@@ -1045,7 +1061,7 @@ class DirectoryEntries(object):
 			ntbyte = self.clusters_buf[pos + 12]
 			lowercase_base, lowercase_extension, is_encrypted, __, __ = ParseNTByte(ntbyte)
 
-			is_deleted = short_name_raw[0] in [ 0x00, 0xE5 ]
+			is_deleted = short_name_raw[0] in [ 0x00, 0xE5 ] # This will be adjusted according to the 'found_null' variable later.
 			short_name = ParseShortName(short_name_raw, encoding, lowercase_base, lowercase_extension)
 
 			# Build a long name (if any), validate the checksum, the order number, then reset the stash.
@@ -1129,6 +1145,31 @@ class DirectoryEntries(object):
 				ctime = None
 
 			first_cluster = (first_cluster_hi << 16) | first_cluster_lo
+
+			if found_null and not is_deleted:
+				# The following statement is present in [FATGEN 1.03]:
+				#   "If DIR_Name[0] == 0x00, then the directory entry is free (same as for 0xE5),
+				#    and there are no allocated directory entries after this one
+				#    (all of the DIR_Name[0] bytes in all of the entries after this one are also set to 0).
+				#
+				#   The special 0 value, rather than the 0xE5 value, indicates to FAT file system driver code
+				#   that the rest of the entries in this directory do not need to be examined because they are all free".
+				#
+				# This is not always the case. While popular implementations zero-out a newly allocated directory cluster (so nothing is found
+				# after an empty (null) directory entry), at least one implementation (embedded) simply writes an empty (null) directory entry after
+				# the last allocated one (without "wiping" the remaining bytes of a newly allocated directory cluster).
+				#
+				# This means that remnant directory entries can be present after an empty (null) directory entry. Such entries are likely to come from
+				# a "previous" file system (before the format). This is why such entries should be marked as deleted even if they do not have the 0xE5 mark.
+				#
+				# Also, the Linux driver does not stop listing the directory once an empty (null) directory entry is found.
+				# It lists such remnant entries as allocated (when no 0xE5 mark is set). So, the real status is going to be "unknown".
+				#
+				# The Chkdsk scan will detect such entries and set the 0x00 mark for them (so, the entries become "deleted" as expected).
+				# But if we mount such a volume without the Chkdsk scan, filling an empty (null) directory entry with metadata for a newly created file
+				# will bring remnant entries back (they will be shown as active files in a directory listing).
+
+				is_deleted = None # The real status is unknown.
 
 			yield FileEntry(is_deleted, is_directory, short_name, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
 
@@ -1239,10 +1280,12 @@ class FileSystemParser(object):
 		# If the file size is known, truncate the resulting data.
 		return b''.join(bufs)[: file_size]
 
-	def walk(self, encoding = 'ascii'):
-		"""Walk over the file system, return tuples (FileEntry and OrphanLongEntry)."""
+	def walk(self, encoding = 'ascii', scan_reallocated = False):
+		"""Walk over the file system, return tuples (FileEntry and OrphanLongEntry).
+		If the 'scan_reallocated' argument is True, also scan reallocated deleted directories.
+		"""
 
-		def process_buf(buf, parent_path):
+		def process_buf(buf, parent_path, stack):
 			dir_entries = DirectoryEntries(buf, self.fat_type == 32)
 
 			for dir_entry in dir_entries.entries(encoding, False):
@@ -1250,6 +1293,13 @@ class FileSystemParser(object):
 					yield ExpandPath(parent_path, dir_entry)
 
 				elif type(dir_entry) is FileEntry:
+					if dir_entry.is_directory and dir_entry.short_name not in [ '.', '..' ] and dir_entry.first_cluster != 0:
+						if dir_entry.first_cluster in stack:
+							# This is a loop, skip this entry.
+							continue
+
+						stack.add(dir_entry.first_cluster)
+
 					yield ExpandPath(parent_path, dir_entry)
 
 					if dir_entry.is_directory and dir_entry.short_name not in [ '.', '..' ]: # Walk over subdirectories.
@@ -1258,21 +1308,38 @@ class FileSystemParser(object):
 						else:
 							preferred_name = dir_entry.short_name
 
-						new_buf = self.read_chain(dir_entry.first_cluster)
-						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + preferred_name):
+						if (not scan_reallocated) and dir_entry.is_deleted and self.fat.is_allocated(dir_entry.first_cluster):
+							# Do not deal with a deleted directory having its first cluster allocated.
+							continue
+
+						try:
+							new_buf = self.read_chain(dir_entry.first_cluster)
+						except (FileSystemException, ValueError):
+							continue
+
+						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + preferred_name, set(stack)):
 							yield item
 
 
 		if self.fat_type == 32:
 			curr = self.bsbpb.get_bpb_rootclus()
 			buf = self.read_chain(curr)
+
+			stack = set([curr])
 		else:
 			root_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_fatsz16() * self.bsbpb.get_bpb_numfats()) * self.bsbpb.get_bpb_bytspersec()
-			self.volume_object.seek(self.volume_offset + root_offset)
-			buf = self.volume_object.read(self.bsbpb.get_bpb_rootentcnt() * 32)
+			root_size = self.bsbpb.get_bpb_rootentcnt() * 32
 
-		for item in process_buf(buf, ''):
+			self.volume_object.seek(self.volume_offset + root_offset)
+			buf = self.volume_object.read(root_size)
+
+			if len(buf) != root_size:
+				raise ValueError('Truncated root directory')
+
+			stack = set()
+
+		for item in process_buf(buf, '', set(stack)): # Pass a new instance of the set ('stack').
 			yield item
 
 	def __str__(self):
-		return 'FileSystemParser'
+		return 'FileSystemParser (FAT12/16/32)'

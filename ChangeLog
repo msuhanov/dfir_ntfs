@@ -1,3 +1,12 @@
+Version: 1.1.2
+
+Handle invalid unallocated FAT directory entries.
+Handle reallocated FAT directory entries.
+Fix FAT12/16/32 detection functions.
+Minor changes.
+
+---
+
 Version: 1.1.1
 
 Add support for FAT12/FAT16 volumes.

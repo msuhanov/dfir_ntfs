@@ -145,6 +145,8 @@ FAT12_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat12.raw.gz')
 FAT16_FULL_TEST = os.path.join(TEST_DATA_DIR, 'fat16.raw.gz')
 FAT12_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat12_full_test.txt')
 FAT16_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat16_full_test.txt')
+FAT16_REALLOC = os.path.join(TEST_DATA_DIR, 'fat16_moved.raw.gz')
+FAT_LOOP = os.path.join(TEST_DATA_DIR, 'fat32_loop.raw.gz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -3989,11 +3991,6 @@ def test_fat32_full(step):
 def test_fat12_full():
 	f = gzip.open(FAT12_FULL_TEST, 'rb')
 
-	with pytest.raises(ValueError):
-		fs = FAT.FileSystemParser(f, 0, 1024*1024)
-		for i in fs.walk():
-			pass
-
 	with pytest.raises(FAT.BootSectorException):
 		fs = FAT.FileSystemParser(f, 1, 1024*1024)
 
@@ -4031,11 +4028,6 @@ def test_fat12_full():
 
 def test_fat16_full():
 	f = gzip.open(FAT16_FULL_TEST, 'rb')
-
-	with pytest.raises(ValueError):
-		fs = FAT.FileSystemParser(f, 0, 1024*1024)
-		for i in fs.walk():
-			pass
 
 	with pytest.raises(FAT.BootSectorException):
 		fs = FAT.FileSystemParser(f, 1, 1024*1024)
@@ -4091,3 +4083,67 @@ def test_fat_ea():
 		break
 
 	assert i.first_cluster == (2 << 16 | 5)
+
+def test_fat_realloc():
+	f = gzip.open(FAT16_REALLOC, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 16777216)
+	assert FAT.IsFileSystem16(fs.bsbpb)
+
+	found_1 = False
+	found_2 = False
+	for item in fs.walk(scan_reallocated = True):
+		assert type(item) is FAT.FileEntry
+
+		item_name = item.short_name
+		if item_name.lower() == '/test/1/_1/1.txt':
+			found_1 = True
+
+		elif item_name.lower() == '/test/2/11/1.txt':
+			found_2 = True
+
+	assert found_2
+	assert found_1
+
+	found_1 = False
+	found_2 = False
+	found_3 = False
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		item_name = item.short_name
+		if item_name.lower() == '/test/1/_1/1.txt':
+			found_1 = True
+
+		elif item_name.lower() == '/test/2/11/1.txt':
+			found_2 = True
+
+		elif item_name.lower() == '/test/1/_1':
+			found_3 = True
+
+	assert found_2
+	assert not found_1
+	assert found_3
+
+	f.close()
+
+def test_fat_loop():
+	f = gzip.open(FAT_LOOP, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 67108864)
+	assert FAT.IsFileSystem32(fs.bsbpb)
+	assert not FAT.IsFileSystem12(fs.bsbpb)
+	assert not FAT.IsFileSystem16(fs.bsbpb)
+
+	c = 0
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..')):
+			continue
+
+		c += 1
+
+	assert c > 50 and c < 100
+
+	f.close()

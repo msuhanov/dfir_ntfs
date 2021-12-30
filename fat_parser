@@ -17,6 +17,15 @@ def format_timestamp(timestamp):
 
 	return timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')
 
+def format_boolean(boolean):
+	if boolean is None:
+		return '?'
+
+	if boolean:
+		return 'Y'
+
+	return 'N'
+
 def print_usage():
 	print('Extract information from FAT12/16/32 file systems')
 	print('')
@@ -50,14 +59,14 @@ for item in fs.walk():
 	if (not found_label) and (not item.is_deleted) and FAT.IsVolumeLabel(item.attributes):
 		found_label = True
 		path = item.short_name + ' (Volume Label)'
-		csv_writer.writerow([item.is_deleted, item.is_directory, path, item.mtime, item.atime, item.ctime, item.size, item.is_encrypted])
+		csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, item.mtime, item.atime, item.ctime, item.size, format_boolean(item.is_encrypted)])
 		continue
 
 	path = item.short_name
 	if item.long_name is not None:
 		path = item.long_name
 
-	csv_writer.writerow([item.is_deleted, item.is_directory, path, item.mtime, item.atime, item.ctime, item.size, item.is_encrypted])
+	csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, item.mtime, item.atime, item.ctime, item.size, format_boolean(item.is_encrypted)])
 
 input_file.close()
 output_file.close()
