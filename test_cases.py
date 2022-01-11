@@ -147,6 +147,7 @@ FAT12_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat12_full_test.txt')
 FAT16_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat16_full_test.txt')
 FAT16_REALLOC = os.path.join(TEST_DATA_DIR, 'fat16_moved.raw.gz')
 FAT_LOOP = os.path.join(TEST_DATA_DIR, 'fat32_loop.raw.gz')
+FAT_NOLOOP = os.path.join(TEST_DATA_DIR, 'fat_noloop.raw.gz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -4145,5 +4146,25 @@ def test_fat_loop():
 		c += 1
 
 	assert c > 50 and c < 100
+
+	f.close()
+
+	f = gzip.open(FAT_NOLOOP, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 12582912)
+	assert not FAT.IsFileSystem32(fs.bsbpb)
+	assert not FAT.IsFileSystem12(fs.bsbpb)
+	assert FAT.IsFileSystem16(fs.bsbpb)
+
+	c = 0
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..')):
+			continue
+
+		c += 1
+
+	assert c == 5
 
 	f.close()

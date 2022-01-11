@@ -1288,17 +1288,26 @@ class FileSystemParser(object):
 		def process_buf(buf, parent_path, stack):
 			dir_entries = DirectoryEntries(buf, self.fat_type == 32)
 
+			prev_first_cluster = None
+
 			for dir_entry in dir_entries.entries(encoding, False):
 				if type(dir_entry) is OrphanLongEntry:
 					yield ExpandPath(parent_path, dir_entry)
 
 				elif type(dir_entry) is FileEntry:
+					if prev_first_cluster is not None and prev_first_cluster in stack:
+						stack.remove(prev_first_cluster)
+
 					if dir_entry.is_directory and dir_entry.short_name not in [ '.', '..' ] and dir_entry.first_cluster != 0:
 						if dir_entry.first_cluster in stack:
 							# This is a loop, skip this entry.
 							continue
 
 						stack.add(dir_entry.first_cluster)
+						prev_first_cluster = dir_entry.first_cluster # We will remove this entry from the stack after this iteration.
+
+					# Here, we also report dot and dot-dot entries.
+					# Many tools ignore them, but they may contain additional (not seen elsewhere) timestamps!
 
 					yield ExpandPath(parent_path, dir_entry)
 
