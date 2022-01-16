@@ -410,7 +410,7 @@ def process_log():
 
 		offset_in_target = log_record.calculate_offset_in_target()
 		if offset_in_target is not None:
-			output_lines.append('Offset in tagret: {}'.format(offset_in_target))
+			output_lines.append('Offset in target: {}'.format(offset_in_target))
 		else:
 			output_lines.append('Unknown offset in target')
 
