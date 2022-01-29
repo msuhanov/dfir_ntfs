@@ -6,7 +6,22 @@
 import sys
 import csv
 import datetime
-from dfir_ntfs.addons import FAT
+from dfir_ntfs.addons import FAT, exFAT
+
+def format_tz_item(tz):
+	if tz is None:
+		return '?'
+
+	if tz == 0:
+		return '0'
+
+	if tz > 0:
+		return '+{}'.format(tz * 15)
+
+	return '-{}'.format(tz * -15)
+
+def format_tz(mtz, atz, ctz):
+	return '{}/{}/{}'.format(format_tz_item(mtz), format_tz_item(atz), format_tz_item(ctz))
 
 def format_timestamp(timestamp):
 	if timestamp is None:
@@ -27,7 +42,7 @@ def format_boolean(boolean):
 	return 'N'
 
 def print_usage():
-	print('Extract information from FAT12/16/32 file systems')
+	print('Extract information from FAT12/16/32 & exFAT file systems')
 	print('')
 	print('Usage:')
 	print(' fat_parser <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
@@ -46,27 +61,51 @@ except ValueError:
 output_file = open(sys.argv[3], 'w', newline = '', encoding = 'utf-8')
 csv_writer = csv.writer(output_file, dialect = 'excel')
 
-fs = FAT.FileSystemParser(input_file, input_offset)
+try:
+	fs = FAT.FileSystemParser(input_file, input_offset)
+except FAT.FileSystemException:
+	is_exfat = True
+else:
+	is_exfat = False
 
-found_label = False
+if is_exfat:
+	fs = exFAT.FileSystemParser(input_file, input_offset)
 
-csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C/CH timestamp', 'File size', 'Is encrypted'])
-for item in fs.walk():
-	if type(item) is FAT.OrphanLongEntry:
-		csv_writer.writerow(['?', '?', item.long_name_partial, '?', '?', '?', '?', '?'])
-		continue
+if not is_exfat:
+	# FAT12/16/32.
 
-	if (not found_label) and (not item.is_deleted) and FAT.IsVolumeLabel(item.attributes):
-		found_label = True
-		path = item.short_name + ' (Volume Label)'
-		csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, item.mtime, item.atime, item.ctime, item.size, format_boolean(item.is_encrypted)])
-		continue
+	found_label = False
 
-	path = item.short_name
-	if item.long_name is not None:
-		path = item.long_name
+	csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C/CH timestamp', 'File size', 'Is encrypted', 'Short name (Python bytes)'])
+	for item in fs.walk():
+		if type(item) is FAT.OrphanLongEntry:
+			csv_writer.writerow(['?', '?', item.long_name_partial, '?', '?', '?', '?', '?', '?'])
+			continue
 
-	csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, item.mtime, item.atime, item.ctime, item.size, format_boolean(item.is_encrypted)])
+		if (not found_label) and (not item.is_deleted) and FAT.IsVolumeLabel(item.attributes):
+			found_label = True
+			path = item.short_name + ' (Volume Label)'
+			csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, format_timestamp(item.mtime), format_timestamp(item.atime), format_timestamp(item.ctime), item.size, format_boolean(item.is_encrypted), item.short_name_raw])
+			continue
+
+		path = item.short_name
+		if item.long_name is not None:
+			path = item.long_name
+
+		csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, format_timestamp(item.mtime), format_timestamp(item.atime), format_timestamp(item.ctime), item.size, format_boolean(item.is_encrypted), item.short_name_raw])
+else:
+	# exFAT.
+
+	csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C timestamp', 'M/A/C TZ (minutes)', 'File size', 'Is encrypted'])
+	for item in fs.walk():
+		if type(item) is exFAT.VolumeLabelEntry:
+			label = item.volume_label + ' (Volume Label)'
+			csv_writer.writerow(['N', 'N', label, '?', '?', '?', '?/?/?', '0', 'N'])
+			continue
+
+		path = item.name
+
+		csv_writer.writerow([format_boolean(item.is_deleted), format_boolean(item.is_directory), path, format_timestamp(item.mtime), format_timestamp(item.atime), format_timestamp(item.ctime), format_tz(item.mtz, item.atz, item.ctz), item.size, format_boolean(item.is_encrypted)])
 
 input_file.close()
 output_file.close()

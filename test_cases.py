@@ -1,19 +1,20 @@
 # coding: utf-8
 
-# dfir_ntfs: an NTFS parser for digital forensics & incident response
+# dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 # (c) Maxim Suhanov
 
 import pytest
 import os
 import hashlib
 import datetime
+import uuid
 import re
 import io
 import gzip
 import tarfile
 import pickle
 from dfir_ntfs import MFT, WSL, USN, Attributes, LogFile, BootSector, ShadowCopy, PartitionTable, MoveTable
-from dfir_ntfs.addons import FAT
+from dfir_ntfs.addons import FAT, exFAT
 
 TEST_DATA_DIR = 'test_data'
 
@@ -148,6 +149,20 @@ FAT16_FULL_TEST_RESULTS = os.path.join(TEST_DATA_DIR, 'fat16_full_test.txt')
 FAT16_REALLOC = os.path.join(TEST_DATA_DIR, 'fat16_moved.raw.gz')
 FAT_LOOP = os.path.join(TEST_DATA_DIR, 'fat32_loop.raw.gz')
 FAT_NOLOOP = os.path.join(TEST_DATA_DIR, 'fat_noloop.raw.gz')
+FAT_LABEL = os.path.join(TEST_DATA_DIR, 'fat_unusual_label.raw.gz')
+
+EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
+EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
+EXFAT_DIR = os.path.join(TEST_DATA_DIR, 'exfat_dir.bin')
+EXFAT_LABEL = os.path.join(TEST_DATA_DIR, 'exfat_label.bin')
+EXFAT_LABEL_2 = os.path.join(TEST_DATA_DIR, 'exfat_label_2.bin')
+EXFAT_BM = os.path.join(TEST_DATA_DIR, 'exfat_bm.bin')
+EXFAT_FULL_TEST_1 = os.path.join(TEST_DATA_DIR, 'exfat_lin_part.raw.gz')
+EXFAT_FULL_TEST_1_RESULTS = os.path.join(TEST_DATA_DIR, 'exfat_lin_part.txt')
+EXFAT_FULL_TEST_2 = os.path.join(TEST_DATA_DIR, 'exfat_win.raw.gz')
+EXFAT_FULL_TEST_2_RESULTS = os.path.join(TEST_DATA_DIR, 'exfat_win_stat.txt')
+EXFAT_FULL_TEST_3 = os.path.join(TEST_DATA_DIR, 'win_exfat_7.raw.gz')
+EXFAT_ENCRYPTED = os.path.join(TEST_DATA_DIR, 'exfat_encrypted.raw.gz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -3749,6 +3764,7 @@ def test_fat32_dirent():
 		if i.short_name == '_sual.txt':
 			cnt_2 += 1
 
+			assert i.short_name_raw == b'_SUAL.TXT'
 			assert i.is_deleted and (not i.is_directory) and (i.long_name is None) and (i.size == 0)
 			assert i.is_encrypted
 			assert i.first_cluster == 12 and i.ntbyte == 0x19 and i.attributes == 0x20
@@ -3759,6 +3775,7 @@ def test_fat32_dirent():
 			ii = FAT.ExpandPath('/123', i)
 
 			assert ii.short_name == '/123/_sual.txt'
+			assert ii.short_name_raw == b'_SUAL.TXT'
 			assert ii.is_deleted and (not ii.is_directory) and (ii.long_name is None) and (ii.size == 0)
 			assert ii.is_encrypted
 			assert ii.first_cluster == 12 and ii.ntbyte == 0x19 and ii.attributes == 0x20
@@ -3769,6 +3786,7 @@ def test_fat32_dirent():
 		if i.short_name == '$EFS':
 			cnt_2 += 1
 
+			assert i.short_name_raw == b'$EFS'
 			assert (not i.is_deleted) and (not i.is_directory) and (i.long_name is None) and (i.size == 680)
 			assert not i.is_encrypted
 			assert i.first_cluster == 14 and i.ntbyte == 0 and i.attributes == 0x06
@@ -3779,6 +3797,7 @@ def test_fat32_dirent():
 			ii = FAT.ExpandPath('/123/', i)
 
 			assert ii.short_name == '/123/$EFS'
+			assert ii.short_name_raw == b'$EFS'
 			assert (not ii.is_deleted) and (not ii.is_directory) and (ii.long_name is None) and (ii.size == 680)
 			assert not ii.is_encrypted
 			assert ii.first_cluster == 14 and ii.ntbyte == 0 and ii.attributes == 0x06
@@ -3811,6 +3830,7 @@ def test_fat32_dirent():
 		if i.short_name == '1':
 			cnt_2 += 1
 
+			assert i.short_name_raw == b'1'
 			assert (not i.is_deleted) and i.is_directory and (i.long_name is None) and (i.size == 0)
 			assert not i.is_encrypted
 			assert i.first_cluster == 4 and i.ntbyte == 0 and i.attributes == 0x10
@@ -3821,6 +3841,7 @@ def test_fat32_dirent():
 			ii = FAT.ExpandPath('/123/', i)
 
 			assert ii.short_name == '/123/1'
+			assert ii.short_name_raw == b'1'
 			assert (not ii.is_deleted) and ii.is_directory and (ii.long_name is None) and (ii.size == 0)
 			assert not ii.is_encrypted
 			assert ii.first_cluster == 4 and ii.ntbyte == 0 and ii.attributes == 0x10
@@ -3843,6 +3864,7 @@ def test_fat32_dirent():
 		assert type(i) is FAT.FileEntry
 
 		if i.short_name == '32766.txt':
+			assert i.short_name_raw == b'32766.TXT'
 			assert i.size == 4
 			assert i.first_cluster == 101672
 
@@ -3868,10 +3890,13 @@ def test_fat32_orphan_lfn():
 
 		if type(i) is FAT.FileEntry and i.short_name == 'SHORT.TXT' and i.long_name is None and not i.is_directory:
 			found_short = True
+
+			assert i.short_name_raw == b'SHORT.TXT'
 			assert i.long_name is None
 
 			ii = FAT.ExpandPath('/123/', i)
 			assert ii.short_name == '/123/SHORT.TXT'
+			assert ii.short_name_raw == b'SHORT.TXT'
 
 	assert cnt == 20
 	assert cnt_2 == 1
@@ -3891,6 +3916,7 @@ def test_fat32_orphan_lfn():
 		if i.short_name == '_HORT.TXT' and not i.is_directory:
 			found_short = True
 			assert i.long_name == 'long_name_test.txt'
+			assert i.short_name_raw == b'_HORT.TXT'
 
 	assert cnt == 19
 	assert found_short
@@ -3900,7 +3926,7 @@ def test_fat32_verylong():
 
 	dirents = FAT.DirectoryEntries(buf)
 
-	long_names = [ 'АБВГДЕЖЗИЙКЛМНО' * 17, ('1БВГДЕЖЗИЙКЛМНО' * 17)[:-1], ('2БВГДЕЖЗИЙКЛМНО' * 17)[:-2],  ('3БВГДЕЖЗИЙКЛМНО' * 17)[:-3], 'Я' ]
+	long_names = [ 'АБВГДЕЖЗИЙКЛМНО' * 17, ('1БВГДЕЖЗИЙКЛМНО' * 17)[:-1], ('2БВГДЕЖЗИЙКЛМНО' * 17)[:-2], ('3БВГДЕЖЗИЙКЛМНО' * 17)[:-3], 'Я' ]
 	cnt = 0
 	for i in dirents.entries('cp866', False):
 		cnt += 1
@@ -4166,5 +4192,507 @@ def test_fat_loop():
 		c += 1
 
 	assert c == 5
+
+	f.close()
+
+@pytest.mark.parametrize('step', [0, 1, 3])
+def test_exfat_br(step):
+	f = open(EXFAT_BR, 'rb')
+
+	with pytest.raises(exFAT.BootRegionException):
+		br = exFAT.BR(b'\x01' * 511)
+
+	if step == 0:
+		f.seek(0)
+		br = exFAT.BR(f.read(12 * 512))
+	elif step == 1:
+		f.seek(12 * 512)
+		br = exFAT.BR(f.read(12 * 512))
+	else:
+		f.seek(0)
+		br = exFAT.BR(f.read(24 * 512))
+
+	assert br.get_bs_jmpboot() == b'\xEB\x76\x90'
+	assert br.get_bs_fsname() == b'EXFAT   '
+	assert br.get_mustbezero() == b'\x00' * 53
+	assert br.get_partitionoffset() == 2048
+	assert br.get_volumelength() == 0x01F800
+	assert br.get_fatoffset() == 0x80
+	assert br.get_fatlength() == 0x80
+	assert br.get_clusterheapoffset() == 0x100
+	assert br.get_clustercount() == 0x3EE0
+	assert br.get_firstclusterofrootdirectory() == 5
+	assert br.get_volumeserialnumber() == 0x5E27F958
+	assert br.get_filesystemrevision() == (1, 0)
+	assert br.get_volumeflags() == (0, 0, 0, 0)
+	assert br.get_bytespersector() == 512
+	assert br.get_sectorspercluster() == 8
+	assert br.get_numberoffats() == 1
+	assert br.get_driveselect() == 0x80
+	assert br.get_percentinuse() == 0
+	assert br.get_reserved() == b'\x00' * 7
+	assert br.get_bs_bootcode() == b'\x00' * 390
+	assert br.get_bs_signature() == b'\x55\xAA'
+
+	assert br.validate(True) and br.validate(False)
+
+	for i in range(10):
+		if i == 0 or i > 8:
+			with pytest.raises(ValueError):
+				br.get_ebs_signature(i)
+
+		else:
+			assert br.get_ebs_signature(i) == b'\x00\x00\x55\xAA'
+
+	assert br.get_oem_guid() == uuid.UUID('{00000000-0000-0000-0000-000000000000}') == exFAT.OEM_NULL_GUID
+	assert br.get_checksum() == 691858453
+	assert br.calculate_checksum() == br.get_checksum()
+
+	assert br.get_oem_flash_parameters() == (None, None, None, None, None, None, None)
+
+	f.close()
+
+def test_exfat_fat():
+	f = open(EXFAT_FAT, 'rb')
+
+	fat = exFAT.FAT(f, 0, 65536, 0x3EE0 + 1)
+
+	assert fat.get_media_type() == 0xF8
+
+	assert fat.get_element(0x3EE0) == 0
+	assert fat.get_element(0x3EE1) == 0
+
+	with pytest.raises(exFAT.FileAllocationTableException):
+		fat.get_element(0x3EE2)
+
+	assert fat.chain(3) == [3, 4]
+	assert fat.chain(0x3EE1) == [0x3EE1]
+
+	with pytest.raises(exFAT.FileAllocationTableException):
+		assert fat.chain(0x3EE2) == []
+
+	f.close()
+
+def test_exfat_dirset_checksum():
+	f = open(EXFAT_DIR, 'rb')
+
+	f.seek(384)
+	b = f.read(608)
+
+	assert exFAT.EntrySetChecksum(b) == 0x9747
+
+	f.close()
+
+def test_exfat_label():
+	f = open(EXFAT_LABEL, 'rb')
+	b = f.read()
+	b += b'\x00' * 384
+
+	d = exFAT.DirectoryEntries(b, True)
+	c = 0
+	for i in d.entries():
+		if type(i) is exFAT.VolumeLabelEntry:
+			assert i.volume_label == 'TeSt_Пре'
+			c += 1
+
+	assert c == 1
+
+	f.close()
+
+	f = open(EXFAT_LABEL_2, 'rb')
+	b = f.read()
+
+	d = exFAT.DirectoryEntries(b, True)
+	c = 0
+	for i in d.entries():
+		if type(i) is exFAT.VolumeLabelEntry:
+			assert i.volume_label == '0987654321a'
+			c += 1
+
+	assert c == 1
+
+	f.close()
+
+	f = open(EXFAT_DIR, 'rb')
+	b = f.read()
+
+	d = exFAT.DirectoryEntries(b, True)
+	for i in d.entries():
+		if type(i) is exFAT.VolumeLabelEntry:
+			assert False
+
+	f.close()
+
+def test_exfat_dir():
+	f = open(EXFAT_DIR, 'rb')
+	b = f.read()
+
+	d = exFAT.DirectoryEntries(b)
+	c = 0
+	with pytest.raises(exFAT.DirectoryEntriesException):
+		for i in d.entries():
+			c += 1
+
+	assert c == 0
+
+	file_names = [ '1.txt', '2.txt', 'test', 'test' * 63 + 'ttt' ]
+
+	d = exFAT.DirectoryEntries(b, True)
+	c = 0
+	for i in d.entries():
+		if c > 0:
+			assert type(i) is exFAT.FileEntry
+			assert i.name == file_names.pop(0)
+			assert not i.is_encrypted
+		else:
+			assert type(i) is exFAT.AllocationBitmapEntry
+
+		c += 1
+
+	assert c == 5
+	assert len(file_names) == 0
+
+	f.close()
+
+def test_exfat_tz():
+	for i in range(0, 0x3F + 1):
+		assert exFAT.DecodeFATTimezone(i + 0x80) == i
+
+	j = -64
+	for i in range(0x40, 0x7F + 1):
+		assert exFAT.DecodeFATTimezone(i + 0x80) == j
+		j += 1
+
+	assert j == 0
+
+	assert exFAT.DecodeFATTimezone(0) is None
+	assert exFAT.DecodeFATTimezone(1) is None
+
+def test_exfat_bitmap():
+	f = open(EXFAT_BM, 'rb')
+
+	bm = exFAT.Bitmap(f.read(), 0x3EE0)
+
+	for i in range(0x3EE0 + 5):
+		if i < 2:
+			assert bm.is_allocated(i) is None
+		elif i < 20:
+			assert bm.is_allocated(i)
+		elif i > 0x3EE0 + 1:
+			assert bm.is_allocated(i) is None
+		else:
+			assert not bm.is_allocated(i)
+
+	f.close()
+
+def test_exfat_full_1():
+	results = open(EXFAT_FULL_TEST_1_RESULTS, 'rb').read().decode('utf-8').splitlines()
+	for line in results[:]:
+		if line.startswith('#'):
+			results.remove(line)
+
+	f = gzip.open(EXFAT_FULL_TEST_1, 'rb')
+
+	with pytest.raises(exFAT.BootRegionException):
+		fs = exFAT.FileSystemParser(f, 0, 129024*512)
+
+	fs = exFAT.FileSystemParser(f, 2048*512, 129024*512)
+	assert not fs.backup_used
+
+	c = 0
+	h = 0
+	for entry in fs.walk():
+		c += 1
+
+		if c == 1:
+			assert type(entry) is exFAT.VolumeLabelEntry and entry.volume_label == '1234567890abcde'
+		else:
+			assert type(entry) is exFAT.FileEntry
+
+			if (not entry.is_deleted) and entry.first_cluster > 0:
+				assert fs.bm.is_allocated(entry.first_cluster)
+
+			result_line = results.pop(0)
+			result = result_line.split('\t')
+
+			assert not entry.is_encrypted
+
+			assert (entry.is_directory and result[0].split(' ')[0] == 'd/d') or ((not entry.is_directory) and result[0].split(' ')[0] == 'r/r')
+			assert entry.name[1:] == result[1]
+
+			assert entry.mtz is None and entry.atz is None and entry.ctz is None
+
+			assert entry.mtime.strftime('%Y-%m-%d %H:%M:%S (MSK)') == result[2]
+
+			# This is a bug in The Sleuth Kit (the long output format of the fls tool always contains "00:00:00" instead of the last access time).
+			assert entry.atime.strftime('%Y-%m-%d 00:00:00 (MSK)') == result[3]
+
+			assert '0000-00-00 00:00:00 (UTC)' == result[4]
+
+			ctime_str = entry.ctime.strftime('%Y-%m-%d %H:%M:%S (MSK)')
+
+			# This is another bug in The Sleuth Kit (timestamps can be off by 1 second).
+			if ctime_str[-7] in [ '1', '3', '5', '7', '9' ]:
+				ctime_str = ctime_str[ : -7] + chr(ord(ctime_str[-7]) - 1) + ctime_str[-6 : ]
+
+			assert ctime_str == result[5]
+
+			assert str(entry.size) == result[6]
+
+			if entry.name == '/1.txt':
+				h += 1
+				buf = fs.read_chain(entry.first_cluster, entry.size, entry.no_fat_chain)
+				assert hashlib.md5(buf).hexdigest() == 'ba1f2511fc30423bdbb183fe33f3dd0f'
+			elif entry.name == '/2.txt':
+				h += 1
+				buf = fs.read_chain(entry.first_cluster, entry.size, entry.no_fat_chain)
+				assert hashlib.md5(buf).hexdigest() == 'd2d362cdc6579390f1c0617d74a7913d'
+			elif entry.name.startswith('/test/') and entry.name.endswith('.txt'):
+				h += 1
+				buf = fs.read_chain(entry.first_cluster, entry.size, entry.no_fat_chain)
+				assert hashlib.md5(buf).hexdigest() == 'd41d8cd98f00b204e9800998ecf8427e'
+
+	assert len(results) == 0
+	assert h == 9
+
+	f.close()
+
+def test_exfat_full_2():
+	f = gzip.open(EXFAT_FULL_TEST_2, 'rb')
+
+	with pytest.raises(exFAT.FileSystemException):
+		fs = exFAT.FileSystemParser(f, 12*512, 6291456)
+
+	fs = exFAT.FileSystemParser(f, 0, 6291456)
+	assert not fs.backup_used
+
+	c_l = 0
+
+	c_afr = 0
+	c_afs = 0
+	c_of = 0
+	c_rf = 0
+
+	c_ad = 0
+	c_rd = 0
+
+	c_fat = 0
+
+	found_unicode = False
+	found_long = False
+	found_fragmented = False
+
+	deleted_files = [ '/1.bin', '/333.bin', '/555.bin', '/Текстовый документ.txt' ]
+
+	for i in fs.walk():
+		if type(i) is exFAT.VolumeLabelEntry:
+			c_l += 1
+			assert i.volume_label == 'test123'
+		else:
+			assert type(i) is exFAT.FileEntry
+
+			assert not i.is_encrypted
+
+			assert i.mtz == i.atz == i.ctz == 12
+
+			if (not i.is_directory) and (not i.is_deleted):
+				assert fs.bm.is_allocated(i.first_cluster)
+
+				if not i.no_fat_chain:
+					c_fat += 1
+
+					for j in fs.fat.chain(i.first_cluster):
+						assert fs.bm.is_allocated(j)
+
+				buf = fs.read_chain(i.first_cluster, i.size, i.no_fat_chain)
+
+				if i.name.endswith('.bin'):
+					if i.name.count('/') == 1:
+						c_afr += 1
+					elif i.name.count('/') == 2:
+						c_afs += 1
+					else:
+						assert False
+
+					num = i.name.split('.')[0].split('/')[-1]
+					assert str(num).encode() == buf
+					assert i.no_fat_chain
+				else:
+					c_of += 1
+
+					if i.name == '/' + ('very_long_file_name' * 12):
+						assert not found_long
+
+						assert buf == b'\xaa' * 2875392
+						assert i.no_fat_chain
+
+						found_long = True
+
+					elif i.name == '/fragmented_file_and_long_name_' + ('l' * 108) + '.txt':
+						assert not found_fragmented
+
+						assert not i.no_fat_chain
+						assert buf == b'test test\r\ntest test' + (b'append' * 4096)
+
+						found_fragmented = True
+
+			elif (not i.is_directory) and i.is_deleted:
+				c_rf += 1
+
+				assert i.name == deleted_files.pop(0)
+
+				if i.name == '/Текстовый документ.txt':
+					assert fs.bm.is_allocated(i.first_cluster) is None and i.size == 0 and i.first_cluster == 0
+				else:
+					assert fs.bm.is_allocated(i.first_cluster)
+
+			elif i.is_directory:
+				if i.is_deleted:
+					c_rd += 1
+					assert i.name == '/0'
+				else:
+					assert fs.bm.is_allocated(i.first_cluster)
+
+					c_ad += 1
+					if i.name == '/2/Новая папка':
+						assert not found_unicode
+						found_unicode = True
+
+	assert c_l == 1
+	assert c_afr == 297
+	assert c_afs == 100
+	assert c_of == 4
+	assert c_rf == 4
+	assert c_ad == 301
+	assert c_rd == 1
+	assert found_unicode and found_long and found_fragmented
+	assert len(deleted_files) == 0
+
+	assert c_fat > 0
+
+	results = open(EXFAT_FULL_TEST_2_RESULTS, 'rb').read().decode('windows-1251').splitlines()
+	for i in fs.walk():
+		if type(i) is exFAT.VolumeLabelEntry:
+			continue
+
+		assert not i.is_encrypted
+
+		if i.is_deleted:
+			continue
+
+		if i.is_directory:
+			size = 0
+		else:
+			size = i.size
+
+		line = '{}\t{}\t{}\t{}\t{}'.format(i.name, i.mtime, i.atime, i.ctime, size)
+		results.remove(line)
+
+	assert len(results) == 0
+
+	f.close()
+
+def test_exfat_full_3():
+	f = gzip.open(EXFAT_FULL_TEST_3, 'rb')
+
+	fs = exFAT.FileSystemParser(f, 0, 6291456)
+	assert fs.backup_used
+	assert fs.br.get_volumeserialnumber() == 0x947889E1
+
+	items_to_see = [ '/Новый текстовый документ.txt', '/1', '/1/2', '/1/3', '/тест.txt' ]
+
+	c_1 = 0
+	c_2 = 0
+
+	for i in fs.walk():
+		assert type(i) is not exFAT.VolumeLabelEntry
+		assert not i.is_encrypted
+
+		if i.name.startswith('/1'):
+			assert not fs.bm.is_allocated(i.first_cluster)
+
+		if i.name != '/тест.txt':
+			c_1 += 1
+			assert i.mtz == i.atz == i.ctz == 23
+		else:
+			c_2 += 1
+			assert i.ctz == 23
+			assert i.atz == i.mtz == -40
+
+		items_to_see.remove(i.name)
+
+	assert len(items_to_see) == 0
+	assert c_1 > 0 and c_2 > 0
+
+	f.close()
+
+def test_fat_label():
+	f = gzip.open(FAT_LABEL, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 1048576)
+	__, label, __ = fs.bsbpb.get_bs_extfields()
+	assert label == b' tEst1.234 '
+
+	c = 0
+	for i in fs.walk():
+		c += 1
+
+		assert type(i) is FAT.FileEntry
+		assert i.short_name == '/ tEst1.234'
+		assert i.short_name_raw == b' tEst1.234'
+
+	assert c == 1
+
+	f.close()
+
+def test_exfat_encrypted():
+	f = gzip.open(EXFAT_ENCRYPTED, 'rb')
+
+	fs = exFAT.FileSystemParser(f, 0, 33554432)
+
+	items_to_see = [ '/System Volume Information', '/System Volume Information/WPSettings.dat', '/System Volume Information/IndexerVolumeGuid', '/encrypted_dir', '/encrypted_dir/$EFS', '/encrypted_dir/1.bin.PFILE', '/encrypted_dir/3.bin.PFILE', '/encrypted_dir/15.bin.PFILE', '/encrypted_dir/16.bin.PFILE', '/encrypted_dir/17.bin.PFILE', '/encrypted_dir/18.bin.PFILE', '/encrypted_dir/32.bin.PFILE', '/encrypted_dir/31.bin.PFILE', '/usual_dir', '/usual_dir/2.bin.PFILE', '/usual_dir/0.bin.PFILE' ]
+
+	found_label = False
+	found_deleted = False
+	found_nonzero = False
+	found_zero = False
+
+	for i in fs.walk():
+		if type(i) is exFAT.VolumeLabelEntry:
+			assert i.volume_label == 'encrypted'
+			found_label = True
+
+			continue
+
+		if i.is_deleted:
+			if i.name == '/' + ('a' * 249) + '.PFILE':
+				assert i.is_encrypted and i.size == 4096 + 16
+				found_deleted = True
+
+			continue
+
+		assert i.name == items_to_see.pop(0)
+
+		if i.name.endswith('.PFILE'):
+			assert i.is_encrypted
+
+			if i.name != '/usual_dir/0.bin.PFILE':
+				assert i.size > 4096 and i.size % 16 == 0 and i.valid_data_length == i.size
+
+				found_nonzero = True
+			else:
+				assert i.size == 4096 and i.valid_data_length == 0
+
+				found_zero = True
+
+		elif i.name == '/encrypted_dir':
+			assert i.is_encrypted
+
+		elif i.name == '/usual_dir':
+			assert not i.is_encrypted
+
+	assert found_label and found_deleted
+	assert found_nonzero and found_zero
+	assert len(items_to_see) == 0
 
 	f.close()

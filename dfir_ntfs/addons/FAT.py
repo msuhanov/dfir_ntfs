@@ -76,6 +76,8 @@ FILE_ATTR_LIST = { # ATTR_LONG_NAME is not listed on purpose.
 # This is obviously wrong for the dot and dot-dot entries.
 FORBIDDEN_CHARACTERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34, 42, 43, 44, 46, 47, 58, 59, 60, 61, 62, 63, 91, 92, 93, 124]
 
+FORBIDDEN_CHARACTERS_LABEL = [0, 10, 13]
+
 # A list of ASCII lowercase characters.
 LOWERCASE = ascii_lowercase.encode()
 
@@ -187,6 +189,7 @@ def ValidateShortName(Name):
 def ParseShortName(Name, Encoding = 'ascii', LowerCaseBase = False, LowerCaseExtension = False):
 	"""Parse a given short (8.3) name, return a string (or None, if the name is invalid).
 	Decoding errors are not raised.
+	If the 'Encoding' argument is None, do not decode the string and do not convert its case, return bytes.
 	"""
 
 	if not ValidateShortName(Name):
@@ -198,16 +201,23 @@ def ParseShortName(Name, Encoding = 'ascii', LowerCaseBase = False, LowerCaseExt
 	elif Name[0] == 0x05: # Handle a special case (KANJI).
 		Name = b'\xE5' + Name[1 : ]
 
-	base = Name[ : 8].rstrip(b' ').decode(Encoding, errors = 'replace')
-	if LowerCaseBase:
-		base = base.lower()
+	if Encoding is not None:
+		base = Name[ : 8].rstrip(b' ').decode(Encoding, errors = 'replace')
+		if LowerCaseBase:
+			base = base.lower()
 
-	extension = Name[8 : ].rstrip(b' ').decode(Encoding, errors = 'replace')
-	if LowerCaseExtension:
-		extension = extension.lower()
+		extension = Name[8 : ].rstrip(b' ').decode(Encoding, errors = 'replace')
+		if LowerCaseExtension:
+			extension = extension.lower()
+	else:
+		base = Name[ : 8].rstrip(b' ')
+		extension = Name[8 : ].rstrip(b' ')
 
 	if len(extension) > 0: # Merge the base name and the extension.
-		return base + '.' + extension
+		if Encoding is not None:
+			return base + '.' + extension
+		else:
+			return base + b'.' + extension
 
 	# Return the base name only.
 	return base
@@ -235,6 +245,9 @@ def BuildLongName(LongEntities):
 	long_name = buf.decode('utf-16le', errors = 'replace')
 	if len(long_name) == 0: # This is an invalid long name.
 		return
+
+	if len(long_name) > 255: # If this name is too long, truncate it.
+		return long_name[ : 255]
 
 	return long_name
 
@@ -898,7 +911,7 @@ class FAT(object):
 # Here, "ctime" means "created time" or "inode changed time".
 # In Windows and macOS, it is "created time".
 # In Linux, it is "inode changed time".
-FileEntry = namedtuple('FileEntry', [ 'is_deleted', 'is_directory', 'short_name', 'long_name', 'atime', 'mtime', 'ctime', 'size', 'attributes', 'ntbyte', 'first_cluster', 'is_encrypted' ])
+FileEntry = namedtuple('FileEntry', [ 'is_deleted', 'is_directory', 'short_name', 'short_name_raw', 'long_name', 'atime', 'mtime', 'ctime', 'size', 'attributes', 'ntbyte', 'first_cluster', 'is_encrypted' ])
 
 OrphanLongEntry = namedtuple('OrphanLongEntry', [ 'long_name_partial' ])
 
@@ -912,6 +925,7 @@ def ExpandPath(ParentPath, FileEntryOrOrphanLongEntry):
 		is_deleted = FileEntryOrOrphanLongEntry.is_deleted
 		is_directory = FileEntryOrOrphanLongEntry.is_directory
 		short_name = ParentPath + FileEntryOrOrphanLongEntry.short_name
+		short_name_raw = FileEntryOrOrphanLongEntry.short_name_raw
 
 		long_name = FileEntryOrOrphanLongEntry.long_name
 		if FileEntryOrOrphanLongEntry.long_name is not None:
@@ -926,7 +940,7 @@ def ExpandPath(ParentPath, FileEntryOrOrphanLongEntry):
 		first_cluster = FileEntryOrOrphanLongEntry.first_cluster
 		is_encrypted = FileEntryOrOrphanLongEntry.is_encrypted
 
-		return FileEntry(is_deleted, is_directory, short_name, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
+		return FileEntry(is_deleted, is_directory, short_name, short_name_raw, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
 	elif type(FileEntryOrOrphanLongEntry) is OrphanLongEntry:
 		long_name_partial = ParentPath + FileEntryOrOrphanLongEntry.long_name_partial
 
@@ -1062,7 +1076,30 @@ class DirectoryEntries(object):
 			lowercase_base, lowercase_extension, is_encrypted, __, __ = ParseNTByte(ntbyte)
 
 			is_deleted = short_name_raw[0] in [ 0x00, 0xE5 ] # This will be adjusted according to the 'found_null' variable later.
-			short_name = ParseShortName(short_name_raw, encoding, lowercase_base, lowercase_extension)
+
+			if not IsVolumeLabel(attributes):
+				short_name_raw_norm = ParseShortName(short_name_raw, None, lowercase_base, lowercase_extension)
+				short_name = ParseShortName(short_name_raw, encoding, lowercase_base, lowercase_extension)
+			else:
+				# A volume label has almost no restrictions.
+
+				if short_name_raw[0] == 0x00 or short_name_raw[0] == 0xE5:
+					short_name_raw = b'_' + short_name_raw[1 : ]
+				elif short_name_raw[0] == 0x05:
+					short_name_raw = b'\xE5' + short_name_raw[1 : ]
+
+				is_valid_label = True
+				for char in short_name_raw:
+					if char in FORBIDDEN_CHARACTERS_LABEL:
+						is_valid_label = False
+						break
+
+				if is_valid_label:
+					short_name = short_name_raw.rstrip(b' ').decode(encoding, errors = 'replace')
+					short_name_raw_norm = short_name_raw.rstrip(b' ')
+				else:
+					short_name = None
+					short_name_raw_norm = None
 
 			# Build a long name (if any), validate the checksum, the order number, then reset the stash.
 			# This code should be executed before any checks against a short name!
@@ -1171,7 +1208,7 @@ class DirectoryEntries(object):
 
 				is_deleted = None # The real status is unknown.
 
-			yield FileEntry(is_deleted, is_directory, short_name, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
+			yield FileEntry(is_deleted, is_directory, short_name, short_name_raw_norm, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
 
 			pos += 32
 
@@ -1308,6 +1345,7 @@ class FileSystemParser(object):
 
 					# Here, we also report dot and dot-dot entries.
 					# Many tools ignore them, but they may contain additional (not seen elsewhere) timestamps!
+					# For example, macOS stores timestamps of a directory in its dot entry ("/dir/.").
 
 					yield ExpandPath(parent_path, dir_entry)
 

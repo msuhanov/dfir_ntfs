@@ -1,3 +1,11 @@
+Version: 1.1.4
+
+Add support for exFAT volumes (implemented in an additional module).
+Handle long and/or unusual volume labels (FAT).
+Minor changes.
+
+---
+
 Version: 1.1.3
 
 Fix the loop detection logic (FAT). Previously, some valid directories could be skipped during the walk.
