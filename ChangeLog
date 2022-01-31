@@ -1,3 +1,9 @@
+Version: 1.1.5
+
+Improve handling of deleted FAT (and exFAT) directories.
+
+---
+
 Version: 1.1.4
 
 Add support for exFAT volumes (implemented in an additional module).

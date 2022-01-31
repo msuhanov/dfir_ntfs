@@ -1364,6 +1364,9 @@ class FileSystemParser(object):
 						except (FileSystemException, ValueError):
 							continue
 
+						if len(new_buf) == 0: # This directory is really empty, skip it.
+							continue
+
 						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + preferred_name, set(stack)):
 							yield item
 

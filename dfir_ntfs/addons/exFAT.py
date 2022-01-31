@@ -706,7 +706,10 @@ class DirectoryEntries(object):
 				break
 
 			if entry_type == DE_INVALID: # Something is wrong with this directory.
-				raise DirectoryEntriesException('Invalid directory entry type found')
+				if self.is_root:
+					raise DirectoryEntriesException('Invalid directory entry type found')
+				else:
+					break
 
 			# Decode the entry type.
 			type_code, type_importance, type_category, is_in_use = DecodeEntryType(entry_type)
@@ -717,7 +720,7 @@ class DirectoryEntries(object):
 			# We are looking for primary entries.
 			if type_category == TYPE_CATEGORY_PRIMARY:
 				if (not self.is_root) and is_in_use and entry_type_pure in [DE_ALLOCATION_BITMAP, DE_UPCASE_TABLE, DE_VOLUME_LABEL]: # This directory is invalid.
-					raise DirectoryEntriesException('Unexpected primary entry found: {}'.format(hex(entry_type)))
+					break
 
 				if (not self.is_root) and is_in_use and entry_type_pure == DE_VOLUME_GUID: # This is unexpected, but not critical, so skip the entry.
 					pos += 32
@@ -755,11 +758,12 @@ class DirectoryEntries(object):
 
 					# Now, validate the entries. No checksum validation is performed against deleted entries.
 					secondary_buf = self.clusters_buf[pos + 32 : pos + 32 + secondary_count * 32]
-					if (not is_deleted) and set_checksum != EntrySetChecksum(self.clusters_buf[pos : pos + 32] + secondary_buf): # Entry set is allocated, but it is invalid, skip it.
+
+					if len(secondary_buf) != secondary_count * 32: # This entry set is truncated, skip it.
 						pos += 32
 						continue
 
-					if len(secondary_buf) != secondary_count * 32: # This entry set is truncated, skip it.
+					if (not is_deleted) and set_checksum != EntrySetChecksum(self.clusters_buf[pos : pos + 32] + secondary_buf): # Entry set is allocated, but it is invalid, skip it.
 						pos += 32
 						continue
 
@@ -1129,6 +1133,9 @@ class FileSystemParser(object):
 						try:
 							new_buf = self.read_chain(dir_entry.first_cluster, dir_entry.size, dir_entry.no_fat_chain)
 						except (FileSystemException, ValueError):
+							continue
+
+						if len(new_buf) == 0: # This directory is really empty, skip it.
 							continue
 
 						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + dir_entry.name, set(stack)):

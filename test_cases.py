@@ -4328,12 +4328,8 @@ def test_exfat_dir():
 	b = f.read()
 
 	d = exFAT.DirectoryEntries(b)
-	c = 0
-	with pytest.raises(exFAT.DirectoryEntriesException):
-		for i in d.entries():
-			c += 1
-
-	assert c == 0
+	for i in d.entries():
+		assert False
 
 	file_names = [ '1.txt', '2.txt', 'test', 'test' * 63 + 'ttt' ]
 
