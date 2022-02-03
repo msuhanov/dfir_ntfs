@@ -150,6 +150,8 @@ FAT16_REALLOC = os.path.join(TEST_DATA_DIR, 'fat16_moved.raw.gz')
 FAT_LOOP = os.path.join(TEST_DATA_DIR, 'fat32_loop.raw.gz')
 FAT_NOLOOP = os.path.join(TEST_DATA_DIR, 'fat_noloop.raw.gz')
 FAT_LABEL = os.path.join(TEST_DATA_DIR, 'fat_unusual_label.raw.gz')
+FAT_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan.bin')
+FAT_ORPHAN_2 = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan_del.bin')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -163,6 +165,8 @@ EXFAT_FULL_TEST_2 = os.path.join(TEST_DATA_DIR, 'exfat_win.raw.gz')
 EXFAT_FULL_TEST_2_RESULTS = os.path.join(TEST_DATA_DIR, 'exfat_win_stat.txt')
 EXFAT_FULL_TEST_3 = os.path.join(TEST_DATA_DIR, 'win_exfat_7.raw.gz')
 EXFAT_ENCRYPTED = os.path.join(TEST_DATA_DIR, 'exfat_encrypted.raw.gz')
+EXFAT_VENDOR_EXTENSIONS = os.path.join(TEST_DATA_DIR, 'exfat_dir_sony.bin') # Source: <https://github.com/relan/exfat/issues/48>.
+EXFAT_UNUSUAL_LABEL_DIR = os.path.join(TEST_DATA_DIR, 'exfat_label_dotdot.bin')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -4323,6 +4327,21 @@ def test_exfat_label():
 
 	f.close()
 
+def test_exfat_label_unusual():
+	f = open(EXFAT_UNUSUAL_LABEL_DIR, 'rb')
+	b = f.read()
+
+	d = exFAT.DirectoryEntries(b, True)
+	c = 0
+	for i in d.entries():
+		if type(i) is exFAT.VolumeLabelEntry:
+			assert i.volume_label == '..'
+			c += 1
+
+	assert c == 1
+
+	f.close()
+
 def test_exfat_dir():
 	f = open(EXFAT_DIR, 'rb')
 	b = f.read()
@@ -4332,10 +4351,15 @@ def test_exfat_dir():
 		assert False
 
 	file_names = [ '1.txt', '2.txt', 'test', 'test' * 63 + 'ttt' ]
+	orphans = [ 'test' * 63 + 'ttt', 't' ]
 
 	d = exFAT.DirectoryEntries(b, True)
 	c = 0
 	for i in d.entries():
+		if type(i) is exFAT.OrphanEntry:
+			assert i.name_partial == orphans.pop(0)
+			continue
+
 		if c > 0:
 			assert type(i) is exFAT.FileEntry
 			assert i.name == file_names.pop(0)
@@ -4347,6 +4371,7 @@ def test_exfat_dir():
 
 	assert c == 5
 	assert len(file_names) == 0
+	assert len(orphans) == 0
 
 	f.close()
 
@@ -4395,9 +4420,15 @@ def test_exfat_full_1():
 	fs = exFAT.FileSystemParser(f, 2048*512, 129024*512)
 	assert not fs.backup_used
 
+	orphans = [ '/' + 'test' * 63 + 'ttt', '/t' ]
+
 	c = 0
 	h = 0
 	for entry in fs.walk():
+		if type(entry) is exFAT.OrphanEntry:
+			assert entry.name_partial == orphans.pop(0)
+			continue
+
 		c += 1
 
 		if c == 1:
@@ -4449,6 +4480,7 @@ def test_exfat_full_1():
 				assert hashlib.md5(buf).hexdigest() == 'd41d8cd98f00b204e9800998ecf8427e'
 
 	assert len(results) == 0
+	assert len(orphans) == 0
 	assert h == 9
 
 	f.close()
@@ -4692,3 +4724,142 @@ def test_exfat_encrypted():
 	assert len(items_to_see) == 0
 
 	f.close()
+
+def test_exfat_vendor_extensions():
+	f = open(EXFAT_VENDOR_EXTENSIONS, 'rb')
+
+	b = f.read()
+
+	d = exFAT.DirectoryEntries(b, False)
+
+	c_a = 0
+	c_d = 0
+	c_o = 0
+
+	c_1 = 0
+	c_2 = 0
+	c_3 = 0
+	c_4 = 0
+	c_5 = 0
+
+	for i in d.entries():
+		if type(i) is exFAT.OrphanEntry:
+			c_o += 1
+			continue
+
+		assert type(i) is exFAT.FileEntry
+
+		if i.name == '966_0001.MXF':
+			c_1 += 1
+		elif i.name == '966_0002.MXF':
+			c_2 += 1
+		elif i.name == '966_0003.MXF':
+			c_3 += 1
+		elif i.name == '966_0004.MXF':
+			c_4 += 1
+		elif i.name == '966_0005.MXF':
+			c_5 += 1
+
+		if not i.is_deleted:
+			c_a += 1
+		else:
+			c_d += 1
+
+	assert c_a == 15
+	assert c_d == 1
+	assert c_o > 1
+
+	assert c_1 == 1 and c_2 == 1 and c_3 == 1 and c_4 == 1 and c_5 == 1
+
+	f.close()
+
+def test_fat_orphan_mangle():
+	f = open(FAT_ORPHAN, 'rb')
+	buf_orig = f.read()
+	f.close()
+
+	buf = buf_orig
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ '1234567890.txt', '123456789_.txt' ]
+	for i in d.entries():
+		assert type(i) is FAT.FileEntry
+		assert i.long_name == l.pop(0)
+
+	assert len(l) == 0
+
+	buf = buf_orig[:64] + buf_orig[96:]
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ '1234567890.txt', '123456789_.txt' ]
+	c_l = 0
+	for i in d.entries():
+		if type(i) is FAT.OrphanLongEntry:
+			assert i.long_name_partial == l.pop(0)
+		else:
+			c_l += 1
+			assert i.long_name == l.pop(0)
+
+	assert len(l) == 0 and c_l == 1
+
+	buf = buf_orig[:32] + buf_orig[96:]
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ 't', '123456789_.txt' ]
+	c_l = 0
+	for i in d.entries():
+		if type(i) is FAT.OrphanLongEntry:
+			assert i.long_name_partial == l.pop(0)
+		else:
+			c_l += 1
+			assert i.long_name == l.pop(0)
+
+	assert len(l) == 0 and c_l == 1
+
+	f = open(FAT_ORPHAN_2, 'rb')
+	buf_orig = f.read()
+	f.close()
+
+	buf = buf_orig
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ '1234567890.txt', '123456789_.txt' ]
+	for i in d.entries():
+		assert type(i) is FAT.FileEntry
+		assert i.long_name == l.pop(0)
+
+	assert len(l) == 0
+
+	buf = buf_orig[:64] + buf_orig[96:]
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ '1234567890.txt', '123456789_.txt' ]
+	c_l = 0
+	for i in d.entries():
+		if type(i) is FAT.OrphanLongEntry:
+			assert i.long_name_partial == l.pop(0)
+		else:
+			c_l += 1
+			assert i.long_name == l.pop(0)
+
+	assert len(l) == 0 and c_l == 1
+
+	buf = buf_orig[:32] + buf_orig[96:]
+
+	buf += b'\x00' * (512 - len(buf))
+	d = FAT.DirectoryEntries(buf)
+	l = [ 't', '123456789_.txt' ]
+	c_l = 0
+	for i in d.entries():
+		if type(i) is FAT.OrphanLongEntry:
+			assert i.long_name_partial == l.pop(0)
+		else:
+			c_l += 1
+			assert i.long_name == l.pop(0)
+
+	assert len(l) == 0 and c_l == 1

@@ -118,7 +118,7 @@ def BuildName(NameEntities, NameLength):
 	if len(name) == 0: # This is an invalid name.
 		return
 
-	if len(name) > NameLength: # This name is too long, truncate it.
+	if NameLength is not None and len(name) > NameLength: # This name is too long, truncate it.
 		return name[ : NameLength]
 
 	for character_code in FORBIDDEN_CHARACTERS:
@@ -128,6 +128,36 @@ def BuildName(NameEntities, NameLength):
 
 	if name in [ '.', '..' ]: # These are reserved names.
 		return
+
+	return name
+
+def BuildLabel(LabelRaw, LabelLength):
+	"""Parse a given volume label, return a string (or None, if the label is invalid).
+	Decoding errors are not raised.
+	"""
+
+	buf = LabelRaw
+
+	# Remove everything after the first null character (including it).
+	i = 0
+	while i < len(buf):
+		if buf[i : i + 2] == b'\x00\x00':
+			buf = buf[ : i]
+			break
+
+		i += 2
+
+	name = buf.decode('utf-16le', errors = 'replace')
+	if len(name) == 0: # This is an invalid label.
+		return
+
+	if len(name) > LabelLength: # This label is too long, truncate it.
+		return name[ : LabelLength]
+
+	for character_code in FORBIDDEN_CHARACTERS:
+		character = chr(character_code)
+		if character in name: # This is an invalid label.
+			return
 
 	return name
 
@@ -649,32 +679,45 @@ class FAT(object):
 # [EXFAT 1.00] clearly states that UTC+00:15 is 1 and UTC-00:15 is -1.
 FileEntry = namedtuple('FileEntry', [ 'is_deleted', 'is_directory', 'name', 'atime', 'atz', 'mtime', 'mtz', 'ctime', 'ctz', 'size', 'valid_data_length', 'attributes', 'first_cluster', 'is_encrypted', 'no_fat_chain' ])
 
+OrphanEntry = namedtuple('OrphanEntry', [ 'name_partial' ])
+
 VolumeLabelEntry = namedtuple('VolumeLabelEntry', [ 'volume_label' ])
 AllocationBitmapEntry = namedtuple('AllocationBitmapEntry', [ 'bitmap_id', 'first_cluster', 'size' ])
 
-def ExpandPath(ParentPath, FileEntryOrig):
+def ExpandPath(ParentPath, FileEntryOrOrphanEntry):
 	if len(ParentPath) > 0 and ParentPath[-1] != PATH_SEPARATOR:
 		ParentPath += PATH_SEPARATOR
 	elif len(ParentPath) == 0:
 		ParentPath = PATH_SEPARATOR
 
-	is_deleted = FileEntryOrig.is_deleted
-	is_directory = FileEntryOrig.is_directory
-	name = ParentPath + FileEntryOrig.name
-	atime = FileEntryOrig.atime
-	atz = FileEntryOrig.atz
-	mtime = FileEntryOrig.mtime
-	mtz = FileEntryOrig.mtz
-	ctime = FileEntryOrig.ctime
-	ctz = FileEntryOrig.ctz
-	size = FileEntryOrig.size
-	valid_data_length = FileEntryOrig.valid_data_length
-	attributes = FileEntryOrig.attributes
-	first_cluster = FileEntryOrig.first_cluster
-	is_encrypted = FileEntryOrig.is_encrypted
-	no_fat_chain = FileEntryOrig.no_fat_chain
+	if type(FileEntryOrOrphanEntry) is FileEntry:
+		FileEntryOrig = FileEntryOrOrphanEntry
 
-	return FileEntry(is_deleted, is_directory, name, atime, atz, mtime, mtz, ctime, ctz, size, valid_data_length, attributes, first_cluster, is_encrypted, no_fat_chain)
+		is_deleted = FileEntryOrig.is_deleted
+		is_directory = FileEntryOrig.is_directory
+		name = ParentPath + FileEntryOrig.name
+		atime = FileEntryOrig.atime
+		atz = FileEntryOrig.atz
+		mtime = FileEntryOrig.mtime
+		mtz = FileEntryOrig.mtz
+		ctime = FileEntryOrig.ctime
+		ctz = FileEntryOrig.ctz
+		size = FileEntryOrig.size
+		valid_data_length = FileEntryOrig.valid_data_length
+		attributes = FileEntryOrig.attributes
+		first_cluster = FileEntryOrig.first_cluster
+		is_encrypted = FileEntryOrig.is_encrypted
+		no_fat_chain = FileEntryOrig.no_fat_chain
+
+		return FileEntry(is_deleted, is_directory, name, atime, atz, mtime, mtz, ctime, ctz, size, valid_data_length, attributes, first_cluster, is_encrypted, no_fat_chain)
+
+	elif type(FileEntryOrOrphanEntry) is OrphanEntry:
+		name_partial = ParentPath + FileEntryOrOrphanEntry.name_partial
+
+		return OrphanEntry(name_partial)
+
+	# Something is wrong, return the input entry as is.
+	return FileEntryOrOrphanEntry
 
 class DirectoryEntries(object):
 	"""This class is used to work with directory entries."""
@@ -690,7 +733,7 @@ class DirectoryEntries(object):
 			raise DirectoryEntriesException('Invalid buffer size: {}'.format(len(self.clusters_buf)))
 
 	def entries(self):
-		"""Get, decode and return directory entries in the clusters (as named tuples: FileEntry).
+		"""Get, decode and return directory entries in the clusters (as named tuples: FileEntry and OrphanEntry).
 		If the 'is_root' argument to the constructor was True, treat the directory entries as located in the root directory.
 		(In this case, the following named tuples can be yielded: VolumeLabelEntry and AllocationBitmapEntry.)
 		"""
@@ -872,6 +915,9 @@ class DirectoryEntries(object):
 
 					yield FileEntry(is_deleted, is_directory, name, atime, atz, mtime, mtz, ctime, ctz, size, valid_data_length, attributes, first_cluster, is_encrypted, no_fat_chain)
 
+					pos += 32 + secondary_count * 32
+					continue
+
 				if self.is_root and entry_type_pure == DE_VOLUME_LABEL and is_in_use: # This is what we want (a volume label found in the root directory).
 					label_count += 1
 					if label_count >= 2:
@@ -890,7 +936,7 @@ class DirectoryEntries(object):
 					if label_character_count > 0:
 						volume_label = self.clusters_buf[pos + 2 : pos + 2 + label_character_count * 2]
 
-						volume_label = BuildName([volume_label], label_character_count)
+						volume_label = BuildLabel(volume_label, label_character_count)
 						if volume_label is None: # The volume label is invalid.
 							raise DirectoryEntriesException('Invalid volume label characters found')
 
@@ -908,6 +954,37 @@ class DirectoryEntries(object):
 					bitmap_data_length = struct.unpack('<Q', self.clusters_buf[pos + 24 : pos + 32])[0]
 
 					yield AllocationBitmapEntry(bitmap_id, bitmap_first_cluster, bitmap_data_length)
+
+			else: # A secondary entry found outside of a valid directory set.
+				if entry_type_pure == DE_FILE_NAME:
+					file_name_entities = []
+
+					i = 0
+					next_entry_type = None
+					while next_entry_type == entry_type or next_entry_type is None:
+						this_file_name_flags = self.clusters_buf[pos + i * 32 + 1]
+						# It is unclear from [EXFAT 1.00] if file name entries must have the AllocationPossible flag set to 0.
+						# Previously, we assumed that this flag is not important. Now, when dealing with orphan entries, check it.
+
+						if this_file_name_flags != 0: # This is unusual, skip.
+							break
+
+						file_name_part_raw = self.clusters_buf[pos + i * 32 + 2 : pos + i * 32 + 32]
+						file_name_entities.append(file_name_part_raw)
+
+						i += 1
+						if i >= MAX_NAME_ENTRIES:
+							break
+
+						next_entry_type = self.clusters_buf[pos + i * 32]
+
+					if i > 0:
+						name_partial = BuildName(file_name_entities, None)
+						if name_partial is not None:
+							yield OrphanEntry(name_partial)
+
+							pos += 32 * i
+							continue
 
 			pos += 32
 
@@ -1098,7 +1175,7 @@ class FileSystemParser(object):
 		return b''.join(bufs)[: file_size]
 
 	def walk(self, scan_reallocated = False):
-		"""Walk over the file system, return tuples (FileEntry and VolumeLabelEntry).
+		"""Walk over the file system, return tuples (FileEntry, OrphanEntry and VolumeLabelEntry).
 		If the 'scan_reallocated' argument is True, also scan reallocated deleted directories.
 		"""
 
@@ -1140,6 +1217,9 @@ class FileSystemParser(object):
 
 						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + dir_entry.name, set(stack)):
 							yield item
+
+				elif type(dir_entry) is OrphanEntry:
+					yield ExpandPath(parent_path, dir_entry)
 
 
 		first = self.br.get_firstclusterofrootdirectory()

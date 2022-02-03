@@ -1,3 +1,10 @@
+Version: 1.1.6
+
+Improve handling of orphan file name entries (FAT and exFAT).
+Handle unusual volume labels (exFAT).
+
+---
+
 Version: 1.1.5
 
 Improve handling of deleted FAT (and exFAT) directories.

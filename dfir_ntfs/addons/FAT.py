@@ -997,7 +997,7 @@ class DirectoryEntries(object):
 				return False
 
 			# Check if both entries are allocated.
-			if long_order not in [ 0x00, 0xE5 ] and prev_long_order not in [ 0x00, 0xE5 ]:
+			if long_order not in [ 0x00, 0xE5 ] and prev_long_order is not None and prev_long_order not in [ 0x00, 0xE5 ]:
 				# Check if checksums match.
 				if long_checksum == prev_long_checksum:
 					# Check if the LAST_LONG_ENTRY flag is not set.
@@ -1053,10 +1053,18 @@ class DirectoryEntries(object):
 						long_name_partial = BuildLongName(long_entities)
 						yield OrphanLongEntry(long_name_partial)
 
-					# Reset the long name stash and skip this entry.
+					# Reset the long name stash and try this entry as the first one in the set.
 					long_entities = []
 					prev_long_order = None
 					prev_long_checksum = None
+
+					if are_long_names_coherent(long_order, long_checksum, None, None):
+						prev_long_order = long_order
+						prev_long_checksum = long_checksum
+
+						long_entities.append(long_name_3)
+						long_entities.append(long_name_2)
+						long_entities.append(long_name_1)
 
 					pos += 32
 					continue

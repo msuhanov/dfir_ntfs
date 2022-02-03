@@ -79,7 +79,7 @@ if not is_exfat:
 	csv_writer.writerow(['Is deleted', 'Is directory', 'Path', 'M timestamp', 'A timestamp', 'C/CH timestamp', 'File size', 'Is encrypted', 'Short name (Python bytes)'])
 	for item in fs.walk():
 		if type(item) is FAT.OrphanLongEntry:
-			csv_writer.writerow(['?', '?', item.long_name_partial, '?', '?', '?', '?', '?', '?'])
+			csv_writer.writerow(['?', '?', item.long_name_partial + ' (Partial Name)', '?', '?', '?', '?', '?', '?'])
 			continue
 
 		if (not found_label) and (not item.is_deleted) and FAT.IsVolumeLabel(item.attributes):
@@ -101,6 +101,10 @@ else:
 		if type(item) is exFAT.VolumeLabelEntry:
 			label = item.volume_label + ' (Volume Label)'
 			csv_writer.writerow(['N', 'N', label, '?', '?', '?', '?/?/?', '0', 'N'])
+			continue
+
+		if type(item) is exFAT.OrphanEntry:
+			csv_writer.writerow(['?', '?', item.name_partial + ' (Partial Name)', '?', '?', '?', '?/?/?', '?', '?'])
 			continue
 
 		path = item.name
