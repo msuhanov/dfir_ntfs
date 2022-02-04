@@ -976,7 +976,10 @@ class DirectoryEntries(object):
 						if i >= MAX_NAME_ENTRIES:
 							break
 
-						next_entry_type = self.clusters_buf[pos + i * 32]
+						try:
+							next_entry_type = self.clusters_buf[pos + i * 32]
+						except IndexError:
+							break
 
 					if i > 0:
 						name_partial = BuildName(file_name_entities, None)
