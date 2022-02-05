@@ -976,6 +976,9 @@ class DirectoryEntries(object):
 						if i >= MAX_NAME_ENTRIES:
 							break
 
+						if file_name_part_raw.endswith(b'\x00\x00'): # This was the last entry in the set.
+							break
+
 						try:
 							next_entry_type = self.clusters_buf[pos + i * 32]
 						except IndexError:
