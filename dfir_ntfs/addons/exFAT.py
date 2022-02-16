@@ -34,7 +34,26 @@ EXFAT_BAD = 0xFFFFFFF7 # Bad cluster.
 ATTR_READ_ONLY = 0x01
 ATTR_HIDDEN = 0x02
 ATTR_SYSTEM = 0x04
-# 0x08 was ATTR_VOLUME_ID in FAT12/16/32.
+
+# 0x08 was ATTR_VOLUME_ID in FAT12/16/32. According to [EXFAT 1.00], this value is reserved.
+#
+# The macOS exFAT driver (Big Sur and Monterey, but not Catalina) sets the 0x08 flag for directory entries. The meaning of this flag is unclear.
+# The flag is set for every newly created directory, but it is not checked when read (not in the exFAT driver, not in the userspace tools like fsck).
+#
+# See also:
+#  * https://www.magiclantern.fm/forum/index.php?topic=25656.0
+#  * https://www.ghisler.ch/board/viewtopic.php?t=73553
+#
+#
+# According to the Azure RTOS FileX documentation, this bit means "[e]ntry is reserved" (there, "entry" means "file").
+#
+# Source:
+# * https://docs.microsoft.com/en-us/azure/rtos/filex/chapter3#exfat-file-directory-entry
+#
+# This is likely a typo.
+
+ATTR_UNKNOWN8 = 0x08
+
 ATTR_DIRECTORY = 0x10
 ATTR_ARCHIVE = 0x20
 
@@ -42,6 +61,7 @@ FILE_ATTR_LIST = {
 	ATTR_READ_ONLY: 'READ_ONLY',
 	ATTR_HIDDEN: 'HIDDEN',
 	ATTR_SYSTEM: 'SYSTEM',
+	ATTR_UNKNOWN8: 'UNKNOWN8_MACOS',
 	ATTR_DIRECTORY: 'DIRECTORY',
 	ATTR_ARCHIVE: 'ARCHIVE'
 }

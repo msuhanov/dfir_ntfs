@@ -329,6 +329,22 @@ NTBytePaddings = { # Remaining bits: padding size.
 def ParseNTByte(Value):
 	"""Decode the NTByte field, return a tuple: (lowercase_base, lowercase_extension, encrypted, large_efs_header, padding_size)."""
 
+	# According to the Azure RTOS FileX driver source code, the 0x08 and 0x10 flags have these meanings:
+	#  * "BIT3 - set if 8.3 is all in lower case and no extended filename";
+	#  * "BIT4 - set for file, clear for directory entry if no extended filename".
+	#
+	# Sources:
+	# * https://github.com/azure-rtos/filex/blob/3b203634dce8fc51e77ac67ec28d91d693c2c570/common/src/fx_directory_entry_read.c#L632
+	# * https://github.com/azure-rtos/filex/blob/3b203634dce8fc51e77ac67ec28d91d693c2c570/common/src/fx_unicode_directory_entry_read.c#L644
+	#
+	# This is a mistake. In the Windows driver, 0x08 is "base name (8) is lowercase" and 0x10 is "extension (3) is lowercase".
+	#
+	# This mistake could be caused by misinterpreting the following test:
+	# * create a file with lowercase characters in its name and extension (this sets both bits);
+	# * create a directory with lowercase characters in its name, while no extension is given (this sets one bit).
+	#
+	# (Now, both bits can be misinterpreted.)
+
 	lowercase_base = Value & 0x08 > 0
 	lowercase_extension = Value & 0x10 > 0
 	encrypted = Value & 0x01 > 0
@@ -667,7 +683,7 @@ class BSBPB(object):
 			fat_num = 0 # Use FAT 0.
 		else:
 			fat_num = active_fat_number
-			if fat_num > self.get_bpb_numfats(): # Something is wrong, use FAT 0.
+			if fat_num + 1 > self.get_bpb_numfats(): # Something is wrong, use FAT 0.
 				fat_num = 0
 
 		offset_in_bytes = (self.get_bpb_rsvdseccnt() + self.get_bpb_fatsz32() * fat_num) * self.get_bpb_bytspersec()
