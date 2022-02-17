@@ -1,3 +1,9 @@
+Version: 1.1.9
+
+Minor changes.
+
+---
+
 Version: 1.1.8
 
 Improve handling of orphan file name entries (exFAT), again.

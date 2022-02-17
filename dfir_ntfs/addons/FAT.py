@@ -444,6 +444,11 @@ class BSBPB(object):
 		if spc not in [1, 2, 4, 8, 16, 32, 64, 128]:
 			raise BootSectorException('Invalid number of sectors per cluster: {}'.format(spc))
 
+		# According to [FATGEN 1.03], the number of bytes per cluster should never be greater than 32768 bytes.
+		# It also notes that "[s]ome versions of some systems allow 64K bytes per cluster value".
+		# This limit is not checked here. The reason is that Linux-based operating systems can create and mount a FAT volume with a larger cluster size.
+		# (For example, 524288 bytes per cluster is supported: 4096 bytes per sector, 128 sectors per cluster.)
+
 		return spc
 
 	def get_bpb_rsvdseccnt(self):

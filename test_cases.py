@@ -152,6 +152,7 @@ FAT_NOLOOP = os.path.join(TEST_DATA_DIR, 'fat_noloop.raw.gz')
 FAT_LABEL = os.path.join(TEST_DATA_DIR, 'fat_unusual_label.raw.gz')
 FAT_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan.bin')
 FAT_ORPHAN_2 = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan_del.bin')
+FAT_UNUSUAL_CLUSTER = os.path.join(TEST_DATA_DIR, 'fat_unusual_cluster.raw.gz')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -4863,3 +4864,21 @@ def test_fat_orphan_mangle():
 			assert i.long_name == l.pop(0)
 
 	assert len(l) == 0 and c_l == 1
+
+def test_fat_unusual_cluster():
+	f = gzip.open(FAT_UNUSUAL_CLUSTER, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0)
+
+	assert fs.cluster_size == 4096 * 128
+
+	c = 0
+	for i in fs.walk():
+		c += 1
+
+		assert i.long_name == '/test_test_test_123_123_123.txt'
+		assert fs.read_chain(i.first_cluster, i.size) == b'456\n'
+
+	assert c == 1
+
+	f.close()
