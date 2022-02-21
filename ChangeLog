@@ -1,3 +1,11 @@
+Version: 1.1.10
+
+Improve handling of deleted directories (FAT and exFAT).
+Improve handling of orphan file name entries (FAT).
+Minor changes.
+
+---
+
 Version: 1.1.9
 
 Minor changes.

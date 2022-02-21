@@ -153,6 +153,9 @@ FAT_LABEL = os.path.join(TEST_DATA_DIR, 'fat_unusual_label.raw.gz')
 FAT_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan.bin')
 FAT_ORPHAN_2 = os.path.join(TEST_DATA_DIR, 'fat_dir_orphan_del.bin')
 FAT_UNUSUAL_CLUSTER = os.path.join(TEST_DATA_DIR, 'fat_unusual_cluster.raw.gz')
+FAT_ALFN_DSFN = os.path.join(TEST_DATA_DIR, 'fat_dir_alfn_dsfn.bin')
+FAT_DELETED_DIR = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir.raw.gz')
+FAT_DELETED_DIR_2 = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir_2.raw.gz')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -4880,5 +4883,96 @@ def test_fat_unusual_cluster():
 		assert fs.read_chain(i.first_cluster, i.size) == b'456\n'
 
 	assert c == 1
+
+	f.close()
+
+def test_fat_allocated_lfn_then_deleted_sfn():
+	buf = open(FAT_ALFN_DSFN, 'rb').read()
+
+	d = FAT.DirectoryEntries(buf, False)
+
+	c = 0
+	for i in d.entries():
+		c += 1
+
+		assert type(i) is FAT.FileEntry
+		assert i.short_name == '_AA.TXT' and i.long_name == 'AaA.txt'
+		assert i.is_deleted
+
+	assert c == 1
+
+def test_fat_orphan_lfn_at_eod():
+	buf = open(FAT_ALFN_DSFN, 'rb').read(32)
+	buf += b'\x00' * (512 - len(buf))
+
+	d = FAT.DirectoryEntries(buf, False)
+
+	c = 0
+	for i in d.entries():
+		c += 1
+
+		assert type(i) is FAT.OrphanLongEntry
+		assert i.long_name_partial == 'AaA.txt'
+
+	assert c == 1
+
+	buf = b'\xE5' * (512 - 32)
+	buf += open(FAT_ALFN_DSFN, 'rb').read(32)
+
+	d = FAT.DirectoryEntries(buf, False)
+
+	c = 0
+	for i in d.entries():
+		c += 1
+
+		assert type(i) is FAT.OrphanLongEntry
+		assert i.long_name_partial == 'AaA.txt'
+
+	assert c == 1
+
+def test_fat_deleted_dir_extra():
+	f = gzip.open(FAT_DELETED_DIR, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 67108864)
+
+	l = [ '/test', '/test_2', '/test_2/.', '/test_2/..', '/test_2/1.txt', '/test_2/2.txt' ]
+	ll = [ '.', '..', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_0', '_1', '_2', '_3', '_4', '_5', '_6', '_7', '_8', '_9', '_0', '_1', '_2', '_3', '_4', '_5', '_6', '_7', '_8', '_9', '_0' ]
+
+	for i in fs.walk():
+		item_name = i.short_name
+		if i.long_name is not None:
+			item_name = i.long_name
+
+		if item_name.startswith('/test/'):
+			if item_name not in [ '/test/.', '/test/..' ]:
+				assert i.is_deleted
+
+			assert item_name[len('/test/') : ] == ll.pop(0)
+		else:
+			assert item_name == l.pop(0)
+
+	assert len(l) == 0
+	assert len(ll) == 0
+
+	f.close()
+
+	f = gzip.open(FAT_DELETED_DIR_2, 'rb')
+
+	fs = FAT.FileSystemParser(f, 0, 16777216)
+
+	l = []
+
+	c = 0
+	for i in fs.walk():
+		if i.short_name.endswith('.') or (i.long_name is not None and i.long_name.endswith('.txt')):
+			if i.long_name is None:
+				l.append(i.short_name)
+			else:
+				l.append(i.long_name)
+
+		c += 1
+
+	assert c == 70
+	assert l == [ '/_/.', '/_/..', '/_/.', '/_/..', '/_/2.txt', '/_/22.txt' ]
 
 	f.close()

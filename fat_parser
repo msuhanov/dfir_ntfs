@@ -46,6 +46,11 @@ def print_usage():
 	print('')
 	print('Usage:')
 	print(' fat_parser <input file (raw image)> <volume offset (in bytes)> <output file (CSV)>')
+	print('')
+	print('Warning:')
+	print(' In the resulting CSV file, the allocation status of a file (or a directory)')
+	print(' is specified based on its directory entry. A deleted directory can contain')
+	print(' files and subdirectories marked as allocated (while they are not).')
 
 if len(sys.argv) != 4:
 	print_usage()

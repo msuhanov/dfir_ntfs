@@ -753,7 +753,7 @@ class DirectoryEntries(object):
 			raise DirectoryEntriesException('Invalid buffer size: {}'.format(len(self.clusters_buf)))
 
 	def entries(self):
-		"""Get, decode and return directory entries in the clusters (as named tuples: FileEntry and OrphanEntry).
+		"""Get, decode and yield directory entries in the clusters (as named tuples: FileEntry and OrphanEntry).
 		If the 'is_root' argument to the constructor was True, treat the directory entries as located in the root directory.
 		(In this case, the following named tuples can be yielded: VolumeLabelEntry and AllocationBitmapEntry.)
 		"""
@@ -1201,7 +1201,7 @@ class FileSystemParser(object):
 		return b''.join(bufs)[: file_size]
 
 	def walk(self, scan_reallocated = False):
-		"""Walk over the file system, return tuples (FileEntry, OrphanEntry and VolumeLabelEntry).
+		"""Walk over the file system, yield tuples (FileEntry, OrphanEntry and VolumeLabelEntry).
 		If the 'scan_reallocated' argument is True, also scan reallocated deleted directories.
 		"""
 
@@ -1228,8 +1228,14 @@ class FileSystemParser(object):
 
 					yield ExpandPath(parent_path, dir_entry)
 
+					is_allocated = self.bm.is_allocated(dir_entry.first_cluster)
+
+					if is_allocated is None:
+						# This is an invalid cluster.
+						continue
+
 					if dir_entry.is_directory: # Walk over subdirectories.
-						if (not scan_reallocated) and dir_entry.is_deleted and self.bm.is_allocated(dir_entry.first_cluster):
+						if (not scan_reallocated) and dir_entry.is_deleted and is_allocated:
 							# Do not deal with a deleted directory having its first cluster allocated.
 							continue
 

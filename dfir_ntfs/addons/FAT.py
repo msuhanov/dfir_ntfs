@@ -447,7 +447,7 @@ class BSBPB(object):
 		# According to [FATGEN 1.03], the number of bytes per cluster should never be greater than 32768 bytes.
 		# It also notes that "[s]ome versions of some systems allow 64K bytes per cluster value".
 		# This limit is not checked here. The reason is that Linux-based operating systems can create and mount a FAT volume with a larger cluster size.
-		# (For example, 524288 bytes per cluster is supported: 4096 bytes per sector, 128 sectors per cluster.)
+		# (For example, 524288 bytes per cluster are supported: 4096 bytes per sector, 128 sectors per cluster.)
 
 		return spc
 
@@ -922,9 +922,12 @@ class FAT(object):
 		return chain
 
 	def is_allocated(self, cluster):
-		"""Check if a given cluster is marked as allocated."""
+		"""Check if a given cluster is marked as allocated (None is returned if the cluster is invalid)."""
 
-		return self.get_element(cluster) != 0
+		try:
+			return self.get_element(cluster) != 0
+		except FileAllocationTableException:
+			return
 
 	def __str__(self):
 		return 'FAT'
@@ -1043,6 +1046,7 @@ class DirectoryEntries(object):
 
 		pos = 0
 		while pos < len(self.clusters_buf):
+			previous_entry_is_file = False
 			long_name = None
 
 			attributes = self.clusters_buf[pos + 11] & 0x3F # Remove the upper two bits.
@@ -1134,6 +1138,9 @@ class DirectoryEntries(object):
 			# This code should be executed before any checks against a short name!
 
 			if not is_deleted:
+				# If the short name entry is not deleted, check the checksum and the long order.
+				# The previous long order must be equal to 1. This also means that the long name entries are allocated.
+
 				if prev_long_checksum is not None and prev_long_order is not None and prev_long_checksum == BuildChecksum(short_name_raw) and get_real_long_order_number(prev_long_order) == 1:
 					long_name = BuildLongName(long_entities)
 				else:
@@ -1143,7 +1150,9 @@ class DirectoryEntries(object):
 
 					long_name = None
 			else:
-				# Since the first byte is lost, skip the validation.
+				# Since the first byte is lost (when entries are deleted), skip the validation (the checksum and the long order).
+				# The previous long name entry can be allocated, though (if the file was deleted on a system that does not support long file names).
+
 				long_name = BuildLongName(long_entities)
 
 			long_entities = []
@@ -1164,6 +1173,14 @@ class DirectoryEntries(object):
 			elif attributes & (ATTR_DIRECTORY | ATTR_VOLUME_ID) == ATTR_VOLUME_ID: # Is a special file (volume ID).
 				is_directory = False
 			else: # Not a valid entry, skip it.
+				if long_name is not None:
+					yield OrphanLongEntry(long_name)
+
+				pos += 32
+				continue
+
+			if len(self.clusters_buf[pos : pos + 32].lstrip(b'\xE5')) == 0 or len(self.clusters_buf[pos : pos + 32].lstrip(b'\x00')) == 0:
+				# Not a valid entry (it is the 0xE5 or 0x00 pattern), skip it.
 				if long_name is not None:
 					yield OrphanLongEntry(long_name)
 
@@ -1238,8 +1255,16 @@ class DirectoryEntries(object):
 				is_deleted = None # The real status is unknown.
 
 			yield FileEntry(is_deleted, is_directory, short_name, short_name_raw_norm, long_name, atime, mtime, ctime, size, attributes, ntbyte, first_cluster, is_encrypted)
+			previous_entry_is_file = True
 
 			pos += 32
+
+		if pos == len(self.clusters_buf) and not previous_entry_is_file:
+			# The directory buffer does not end with a file entry. There could be an orphan long name.
+
+			if len(long_entities) > 0:
+				long_name_partial = BuildLongName(long_entities)
+				yield OrphanLongEntry(long_name_partial)
 
 	def __str__(self):
 		return 'DirectoryEntries'
@@ -1351,6 +1376,15 @@ class FileSystemParser(object):
 		If the 'scan_reallocated' argument is True, also scan reallocated deleted directories.
 		"""
 
+		def bufs_match(buf_1, buf_2):
+			if buf_1[-96] == 0 or buf_1[-64] == 0 or buf_1[-32] == 0 or buf_2[0] == 0: # The first buffer is not fully filled or the second buffer is invalid.
+				return False
+
+			if buf_2[33 : 35] == b'. ': # The second buffer obviously belongs to another directory (it contains the dot entry) or it is invalid (it contains a name with ". ").
+				return False
+
+			return True
+
 		def process_buf(buf, parent_path, stack):
 			dir_entries = DirectoryEntries(buf, self.fat_type == 32)
 
@@ -1384,7 +1418,13 @@ class FileSystemParser(object):
 						else:
 							preferred_name = dir_entry.short_name
 
-						if (not scan_reallocated) and dir_entry.is_deleted and self.fat.is_allocated(dir_entry.first_cluster):
+						is_allocated = self.fat.is_allocated(dir_entry.first_cluster)
+
+						if is_allocated is None:
+							# This is an invalid cluster.
+							continue
+
+						if (not scan_reallocated) and dir_entry.is_deleted and is_allocated:
 							# Do not deal with a deleted directory having its first cluster allocated.
 							continue
 
@@ -1395,6 +1435,27 @@ class FileSystemParser(object):
 
 						if len(new_buf) == 0: # This directory is really empty, skip it.
 							continue
+
+						if (not scan_reallocated) and dir_entry.is_deleted and new_buf[33 : 35] != b'. ':
+							# This is not the first cluster of a deleted directory.
+							continue
+
+						if dir_entry.is_deleted:
+							# Since FAT chains are lost for deleted files (directories), try to append the next cluster (if it is not allocated).
+							# Also, validate that two clusters contain "matching" directory entries.
+							# No attempt is made to read more than one "extra" cluster (appending more clusters is just guessing).
+
+							next_cluster = dir_entry.first_cluster + 1
+							next_is_allocated = self.fat.is_allocated(next_cluster)
+
+							if next_is_allocated is not None and not next_is_allocated:
+								try:
+									extra_buf = self.read_chain(next_cluster)
+								except (FileSystemException, ValueError):
+									pass
+								else:
+									if bufs_match(new_buf, extra_buf):
+										new_buf += extra_buf
 
 						for item in process_buf(new_buf, parent_path + PATH_SEPARATOR + preferred_name, set(stack)):
 							yield item
