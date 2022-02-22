@@ -1380,7 +1380,7 @@ class FileSystemParser(object):
 			if buf_1[-96] == 0 or buf_1[-64] == 0 or buf_1[-32] == 0 or buf_2[0] == 0: # The first buffer is not fully filled or the second buffer is invalid.
 				return False
 
-			if buf_2[33 : 35] == b'. ': # The second buffer obviously belongs to another directory (it contains the dot entry) or it is invalid (it contains a name with ". ").
+			if buf_2[33 : 35] == b'. ': # The second buffer obviously belongs to another directory (it contains the dot-dot entry) or it is invalid (it contains a name with ". ").
 				return False
 
 			return True
@@ -1440,7 +1440,7 @@ class FileSystemParser(object):
 							# This is not the first cluster of a deleted directory.
 							continue
 
-						if dir_entry.is_deleted:
+						if dir_entry.is_deleted and len(self.fat.chain(dir_entry.first_cluster)) == 1:
 							# Since FAT chains are lost for deleted files (directories), try to append the next cluster (if it is not allocated).
 							# Also, validate that two clusters contain "matching" directory entries.
 							# No attempt is made to read more than one "extra" cluster (appending more clusters is just guessing).
