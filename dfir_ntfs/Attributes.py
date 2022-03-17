@@ -893,7 +893,7 @@ class IndexAllocation(GenericAttributeNonresident):
 			if usa_size - 1 >= 2:
 				index_buffer_size = (usa_size - 1) * UPDATE_SEQUENCE_STRIDE_INDEX
 
-				if index_buffer_size > 0 and index_buffer_size % 512 == 0 and index_buffer_size <= 240640: # (512-40-2)*512=240640.
+				if index_buffer_size > 0 and index_buffer_size % 512 == 0 and index_buffer_size <= 120320: # (512-40-2)/2*512=120320.
 					self.fragmented_file.seek(0)
 					index_buf = bytearray(self.fragmented_file.read(index_buffer_size))
 
