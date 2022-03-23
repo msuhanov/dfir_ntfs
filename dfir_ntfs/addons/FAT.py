@@ -1195,6 +1195,14 @@ class DirectoryEntries(object):
 			ctime_fat = DecodeFATTime(struct.unpack('<H', self.clusters_buf[pos + 14 : pos + 16])[0])
 			cdate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 16 : pos + 18])[0])
 
+
+			# According to the "rugged" FAT driver found in the Symbian operating system, the "Last access date" field is used for a different purpose.
+			# In that driver, the field contains the entry ID (either 0 or 1). This is not supported here.
+			# The DecodeFATDate() function must return None for 0 and 1.
+			#
+			# Sources:
+			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/fat_dir_entry.h#L65
+			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/fat_dir_entry.h#L47
 			adate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 18 : pos + 20])[0])
 
 			# This field points to an extended attribute in FAT12/16 volumes. This is not supported.

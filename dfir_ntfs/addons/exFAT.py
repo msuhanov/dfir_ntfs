@@ -225,7 +225,7 @@ def DecodeFATTimestamp(Value, Value10ms = 0):
 
 def DecodeFATTimezone(Value):
 	"""Decode and return the FAT timezone as an integer (or None, if the timezone is not given).
-	This integer is signed and counts 15-minute intervals from UTC.
+	This integer is signed and it counts 15-minute intervals from UTC.
 	"""
 
 	is_valid = Value & 0x80 > 0
