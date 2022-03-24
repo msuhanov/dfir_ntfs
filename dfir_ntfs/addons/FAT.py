@@ -1195,7 +1195,6 @@ class DirectoryEntries(object):
 			ctime_fat = DecodeFATTime(struct.unpack('<H', self.clusters_buf[pos + 14 : pos + 16])[0])
 			cdate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 16 : pos + 18])[0])
 
-
 			# According to the "rugged" FAT driver found in the Symbian operating system, the "Last access date" field is used for a different purpose.
 			# In that driver, the field contains the entry ID (either 0 or 1). It is used to perform fault-tolerant updates to directory entries.
 			# This meaning of the field is not supported here. The DecodeFATDate() function must return None ("no valid date set") for 0 and 1.
