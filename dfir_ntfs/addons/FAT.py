@@ -1478,6 +1478,9 @@ class FileSystemParser(object):
 			root_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_fatsz16() * self.bsbpb.get_bpb_numfats()) * self.bsbpb.get_bpb_bytspersec()
 			root_size = self.bsbpb.get_bpb_rootentcnt() * 32
 
+			if root_size == 0:
+				raise ValueError('Invalid root directory (zero length)')
+
 			self.volume_object.seek(self.volume_offset + root_offset)
 			buf = self.volume_object.read(root_size)
 

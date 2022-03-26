@@ -1,3 +1,9 @@
+Version: 1.1.12
+
+Minor changes (FAT and exFAT).
+
+---
+
 Version: 1.1.11
 
 Improve handling of deleted directories (FAT), again.
