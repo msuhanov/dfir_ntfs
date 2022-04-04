@@ -983,7 +983,7 @@ class LogFileParser(object):
 
 			if candidate_log_page_number == 0:
 				return
-			
+
 			candidate_log_record_page = self.get_log_record_page_by_number(candidate_log_page_number)
 			if candidate_log_record_page is not None:
 				try:
@@ -1015,7 +1015,7 @@ class LogFileParser(object):
 
 			if candidate_log_page_number == 0:
 				return
-			
+
 			candidate_log_record_page = self.get_log_record_page_by_number(candidate_log_page_number)
 			if candidate_log_record_page is not None:
 				try:

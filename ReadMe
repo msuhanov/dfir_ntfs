@@ -9,7 +9,7 @@ dfir_ntfs: an NTFS/FAT parser for digital forensics & incident response
 
 2. Installation
 
-# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.1.12.tar.gz
+# pip3 install https://github.com/msuhanov/dfir_ntfs/archive/1.1.13.tar.gz
 
 3. Timestamps
 

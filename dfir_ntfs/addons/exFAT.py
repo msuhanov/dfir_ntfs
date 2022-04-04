@@ -583,7 +583,7 @@ class BR(object):
 		if first_cluster_of_root_directory > cluster_count + 1:
 			raise BootRegionException('Invalid first root directory cluster (too large)')
 
-		major_version, minor_version = self.get_filesystemrevision()	
+		major_version, minor_version = self.get_filesystemrevision()
 		if major_version == 0 or major_version > 99 or minor_version > 99:
 			raise BootRegionException('Invalid file system version')
 
