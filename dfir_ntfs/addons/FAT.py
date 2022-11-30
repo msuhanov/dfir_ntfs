@@ -934,7 +934,8 @@ class FAT(object):
 
 # Here, "ctime" means "created time" or "inode changed time".
 # In Windows and macOS, it is "created time".
-# In Linux, it is "inode changed time".
+# In Linux, it is "inode changed time" (before Linux 5.19) or "created time" (Linux 5.19 and later).
+# QEMU VVFAT maps "inode changed time" into this field too.
 FileEntry = namedtuple('FileEntry', [ 'is_deleted', 'is_directory', 'short_name', 'short_name_raw', 'long_name', 'atime', 'mtime', 'ctime', 'size', 'attributes', 'ntbyte', 'first_cluster', 'is_encrypted' ])
 
 OrphanLongEntry = namedtuple('OrphanLongEntry', [ 'long_name_partial' ])
