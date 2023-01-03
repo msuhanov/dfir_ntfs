@@ -844,7 +844,7 @@ def test_usn_journal():
 		fsutil_lines = f.read().decode('utf-8').splitlines()
 
 	for fsutil_line in fsutil_lines:
-		match_obj = re.match('^Usn\s+:\s+(\d+)$', fsutil_line)
+		match_obj = re.match('^Usn\\s+:\\s+(\\d+)$', fsutil_line)
 		if match_obj:
 			usn_number = int(match_obj.group(1))
 			usn_numbers.remove(usn_number)
@@ -4976,3 +4976,20 @@ def test_fat_deleted_dir_extra():
 	assert l == [ '/_/.', '/_/..', '/_/.', '/_/..', '/_/2.txt', '/_/22.txt' ]
 
 	f.close()
+
+def test_fat_no_boot_signature():
+	with open(FAT_BS, 'rb') as f:
+		b = FAT.BSBPB(f.read(512))
+
+	assert FAT.IsFileSystem32(b)
+
+	assert b.get_bs_jmpboot() == b'\xeb\x58\x90'
+	assert b.get_signature() == b'\x55\xaa'
+
+	with open(FAT_BS, 'rb') as f:
+		b = FAT.BSBPB(f.read(510) + b'\x00\x00')
+
+	assert FAT.IsFileSystem32(b)
+
+	assert b.get_bs_jmpboot() == b'\xeb\x58\x90'
+	assert b.get_signature() == b'\x00\x00'

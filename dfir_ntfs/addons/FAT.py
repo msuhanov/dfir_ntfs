@@ -416,8 +416,14 @@ class BSBPB(object):
 			raise BootSectorException('Invalid boot sector size')
 
 		if not relaxed_checks:
-			if self.get_signature() != b'\x55\xaa':
-				raise BootSectorException('Invalid boot sector signature')
+			if self.get_signature() != b'\x55\xaa': # Check the boot sector signature.
+
+				# If there is no valid boot sector signature, check the jump code. See:
+				# * https://reviews.freebsd.org/D34699
+
+				jmp_code = self.get_bs_jmpboot()
+				if jmp_code[0] != 0xE9 and jmp_code[0] != 0xEB: # In the latter case, the NOP instruction (0x90) in the third byte is not checked.
+					raise BootSectorException('Invalid boot sector signature and no valid jump code present')
 
 		# First, assume FAT32.
 		self.is_fat32 = True

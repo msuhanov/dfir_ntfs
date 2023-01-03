@@ -1,3 +1,9 @@
+Version: 1.1.14
+
+Improve handling of unusual FAT volumes.
+
+---
+
 Version: 1.1.13
 
 Minor changes.
