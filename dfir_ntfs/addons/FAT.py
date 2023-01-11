@@ -105,12 +105,14 @@ def IsVolumeLabel(FileAttributes):
 # According to [FATGEN 1.03], the only way to determine the FAT type is based on the count of clusters.
 # This way is implemented in four functions below. However, there are some notable exceptions...
 #
-# 1. The Microsoft implementation treats file systems with 4085 or 4086 data clusters as FAT12, not FAT16. 
+# 1. The Microsoft implementation treats file systems with 4085 or 4086 data clusters as FAT12, not FAT16.
 # 2. The FreeBSD implementation treats file systems with 4084 data clusters as FAT16, not FAT12.
+# 3. Some users exploit "small" FAT32 volumes for use in embedded devices.
 #
 # Sources:
 # * https://github.com/microsoft/Windows-driver-samples/blob/9e1a643093cac60cd333b6d69abc1e4118a12d63/filesys/fastfat/fat.h#L515
 # * https://github.com/freebsd/freebsd-src/blob/b935e867af1855d008de127151d69a1061541ba5/sys/fs/msdosfs/msdosfs_vfsops.c#L612 (note the " + 1" part)
+# * https://mail.gnu.org/archive/html/info-mtools/2022-08/msg00000.html and https://mail.gnu.org/archive/html/info-mtools/2022-09/msg00003.html
 #
 # Currently, no workaround for these cases is provided.
 
@@ -459,6 +461,10 @@ class BSBPB(object):
 		"""Get and return the sectors per cluster value."""
 
 		spc = struct.unpack('<B', self.bs_buf[13 : 14])[0]
+
+		# According to one source, 0 means 256 here. This is not supported now. See:
+		# * https://github.com/FDOS/kernel/pull/95/commits/293a3f5b5a27ad16148ca515a27fa827e233f7fd
+
 		if spc not in [1, 2, 4, 8, 16, 32, 64, 128]:
 			raise BootSectorException('Invalid number of sectors per cluster: {}'.format(spc))
 
