@@ -615,7 +615,11 @@ class BSBPB(object):
 		if not self.is_fat32:
 			return
 
-		return struct.unpack('<H', self.bs_buf[48 : 50])[0]
+		fsi = struct.unpack('<H', self.bs_buf[48 : 50])[0]
+		if fsi == 0:
+			raise BootSectorException('Invalid file system information sector: {}'.format(fsi))
+
+		return fsi
 
 	def get_bpb_bkbootsec(self):
 		"""Get and return the backup boot sector."""
