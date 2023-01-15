@@ -20,6 +20,9 @@ import struct
 from string import ascii_lowercase
 from datetime import date, time, datetime, timedelta
 from collections import namedtuple
+from warnings import warn
+
+WARN_FUNC = warn # This function is used to deliver warnings about volume format violations that can be handled by the parser.
 
 PATH_SEPARATOR = '/'
 
@@ -114,7 +117,8 @@ def IsVolumeLabel(FileAttributes):
 # * https://github.com/freebsd/freebsd-src/blob/b935e867af1855d008de127151d69a1061541ba5/sys/fs/msdosfs/msdosfs_vfsops.c#L612 (note the " + 1" part)
 # * https://mail.gnu.org/archive/html/info-mtools/2022-08/msg00000.html and https://mail.gnu.org/archive/html/info-mtools/2022-09/msg00003.html
 #
-# Currently, no workaround for these cases is provided.
+# Currently, the only workaround provided is for the third case.
+# See the comment below (in the 'IsFileSystemUnusual12Or16' function) for additional information.
 
 def GetCountOfClusters(BSBPB):
 	"""Calculate and return the number of data clusters in the FAT12/16/32 file system."""
@@ -135,22 +139,77 @@ def GetCountOfClusters(BSBPB):
 
 	return CountofClusters
 
-def IsFileSystem32(BSBPB):
-	"""Check if a given BSBPB object belongs to the FAT32 file system."""
+def IsFileSystem32(BSBPB, Silent = False):
+	"""Check if a given BSBPB object belongs to the FAT32 file system.
+	This function should be used first (before calling two functions below).
+	"""
 
-	return GetCountOfClusters(BSBPB) >= 65525
+	if GetCountOfClusters(BSBPB) >= 65525: # This is a true FAT32 file system.
+		return True
 
-def IsFileSystem16(BSBPB):
+	if BSBPB.get_bpb_fatsz16() == 0 and BSBPB.get_bpb_fatsz32() > 0:
+		# This is a "small" FAT32 file system (and definitely not FAT12/16).
+		# This check is similar to the one implemented in the Windows driver, and the same as in the Linux driver.
+
+		if not Silent:
+			WARN_FUNC('Not enough clusters for the FAT32 volume, assuming this is an unusually small FAT32 volume')
+
+		return True
+
+	return False
+
+def IsFileSystem16(BSBPB, Silent = False):
 	"""Check if a given BSBPB object belongs to the FAT16 file system."""
 
 	CountOfClusters = GetCountOfClusters(BSBPB)
+	IsFileSystemUnusual12Or16(CountOfClusters, Silent)
+
 	return CountOfClusters < 65525 and CountOfClusters >= 4085
 
-def IsFileSystem12(BSBPB):
+def IsFileSystem12(BSBPB, Silent = False):
 	"""Check if a given BSBPB object belongs to the FAT12 file system."""
 
 	CountOfClusters = GetCountOfClusters(BSBPB)
+	IsFileSystemUnusual12Or16(CountOfClusters, Silent)
+
 	return CountOfClusters < 4085 and CountOfClusters > 0
+
+def IsFileSystemUnusual12Or16(CountOfClusters, Silent = False):
+	"""Check if the count of clusters defines an edge case between FAT12 and FAT16."""
+
+	# According to [FATGEN 1.03], the threshold between FAT12 and FAT16 file systems is 4085 clusters (FAT12: < 4085, FAT16: >= 4085).
+	# This means that the highest cluster number in the FAT12 case is 0x0FF5 (4084 + 1).
+	# The 0x0FF6 number is reserved, the 0x0FF7 number is used to mark bad clusters in the FAT.
+	#
+	# According to Peter Norton ("Inside the IBM PC, Revised and Enlarged", 1985, page 157), cluster numbers starting from 0x0FF0 (4080) are reserved.
+	# He also states that the 16 highest values are special, not usable.
+	# This means that the threshold is 4079 clusters (the highest cluster number is 4079, or 0x0FEF, the highest cluster count is 4078): FAT12 < 4079, FAT16: >= 4079.
+	#
+	# According to "Windows Internals, Part 2, 7th Edition" (2021; Chapter 11, "File systems", "FAT12, FAT16, and FAT32"), the last 16 clusters of a volume are reserved.
+	# This means that the threshold is 4079 clusters, again.
+	#
+	# So, we will issue a warning when the cluster count is in the [4079; 4085) range, because the file system type could be misinterpreted by the operating system used.
+	# Additionally, we issue a warning when the cluster count is either 4085 or 4086, because these values are misinterpreted by the Microsoft implementation.
+	# And the final range is [4079; 4086]...
+	#
+	# Since the file system could be mounted in different operating systems, there are no strong indicators of its real type.
+	# It could be formatted as FAT12 and then used as either FAT12 or FAT16, or even as FAT12 _and_ FAT16 (at different times).
+	#
+	# Some possible solutions are:
+	# * warn the users and allow them to manually specify the file system type (FAT12 or FAT16);
+	# * try both file system types to get better results;
+	# * read the file allocation table and try to guess the right element size;
+	# * get the file system type from the extended fields, if set (this is not going to work if the file system was misinterpreted after the format operation).
+	#
+	# Currenly, only the warning is issued.
+
+	if CountOfClusters >= 4079 and CountOfClusters <= 4086:
+		if not Silent:
+			WARN_FUNC('The number of clusters is likely to cause the file system to be misinterpreted as either FAT12 or FAT16')
+
+		return True
+
+	return False
 
 def ValidateShortName(Name):
 	"""Validate a given short (8.3) name.
@@ -462,10 +521,14 @@ class BSBPB(object):
 
 		spc = struct.unpack('<B', self.bs_buf[13 : 14])[0]
 
-		# According to one source, 0 means 256 here. This is not supported now. See:
+		# According to one source, 0 means 256 here. See:
 		# * https://github.com/FDOS/kernel/pull/95/commits/293a3f5b5a27ad16148ca515a27fa827e233f7fd
 
-		if spc not in [1, 2, 4, 8, 16, 32, 64, 128]:
+		if spc == 0:
+			WARN_FUNC('The sectors per cluster value is 0, assuming 256 to handle unusual volumes')
+			spc = 256
+
+		if spc not in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
 			raise BootSectorException('Invalid number of sectors per cluster: {}'.format(spc))
 
 		# According to [FATGEN 1.03], the number of bytes per cluster should never be greater than 32768 bytes.
@@ -505,11 +568,7 @@ class BSBPB(object):
 	def get_bpb_totsec16(self):
 		"""Get and return the 16-bit number of sectors on the volume."""
 
-		tot = struct.unpack('<H', self.bs_buf[19 : 21])[0]
-		if tot > 0 and self.is_fat32:
-			raise BootSectorException('Invalid number (16) of total sectors')
-
-		return tot
+		return struct.unpack('<H', self.bs_buf[19 : 21])[0]
 
 	def get_bpb_media(self):
 		"""Get and return the media type (as an integer)."""
@@ -1333,7 +1392,7 @@ class FileSystemParser(object):
 	fat_type = None
 	"""A volume type (12, 16 or 32)."""
 
-	def __init__(self, volume_object, volume_offset, volume_size = None):
+	def __init__(self, volume_object, volume_offset = 0, volume_size = None):
 		self.volume_object = volume_object
 		self.volume_offset = volume_offset
 		self.volume_size = volume_size
@@ -1345,11 +1404,11 @@ class FileSystemParser(object):
 		bs_buf = self.volume_object.read(512)
 		self.bsbpb = BSBPB(bs_buf)
 
-		if IsFileSystem32(self.bsbpb):
+		if IsFileSystem32(self.bsbpb, True):
 			self.fat_type = 32
-		elif IsFileSystem16(self.bsbpb):
+		elif IsFileSystem16(self.bsbpb, True):
 			self.fat_type = 16
-		elif IsFileSystem12(self.bsbpb):
+		elif IsFileSystem12(self.bsbpb, True):
 			self.fat_type = 12
 		else:
 			raise ValueError('Unknown FAT type (not FAT12/16/32)')

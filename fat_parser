@@ -8,6 +8,11 @@ import csv
 import datetime
 from dfir_ntfs.addons import FAT, exFAT
 
+def custom_warn(msg):
+	print(msg)
+
+FAT.WARN_FUNC = custom_warn
+
 def format_tz_item(tz):
 	if tz is None:
 		return '?'

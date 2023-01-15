@@ -1080,7 +1080,7 @@ class FileSystemParser(object):
 	backup_used = None
 	"""True if a backup boot region has been used to parse this volume."""
 
-	def __init__(self, volume_object, volume_offset, volume_size = None):
+	def __init__(self, volume_object, volume_offset = 0, volume_size = None):
 		def try_br(br_offset):
 			self.volume_object.seek(self.volume_offset + br_offset)
 			br_buf = self.volume_object.read(12 * 4096)

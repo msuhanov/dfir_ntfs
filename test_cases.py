@@ -156,6 +156,8 @@ FAT_UNUSUAL_CLUSTER = os.path.join(TEST_DATA_DIR, 'fat_unusual_cluster.raw.gz')
 FAT_ALFN_DSFN = os.path.join(TEST_DATA_DIR, 'fat_dir_alfn_dsfn.bin')
 FAT_DELETED_DIR = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir.raw.gz')
 FAT_DELETED_DIR_2 = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir_2.raw.gz')
+FAT32_SMALL = os.path.join(TEST_DATA_DIR, 'fat32_small.raw.gz')
+FAT16_BS_EDGE = os.path.join(TEST_DATA_DIR, 'fat16_edge.bin')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -4993,3 +4995,80 @@ def test_fat_no_boot_signature():
 
 	assert b.get_bs_jmpboot() == b'\xeb\x58\x90'
 	assert b.get_signature() == b'\x00\x00'
+
+warn_cnt = 0
+def test_fat32_small():
+	def warn_to_devnull(msg):
+		assert ' small' in msg
+		global warn_cnt
+		warn_cnt += 1
+
+
+	warn_old = FAT.WARN_FUNC
+	FAT.WARN_FUNC = warn_to_devnull
+
+	global warn_cnt
+	warn_cnt = 0
+
+	f = gzip.open(FAT32_SMALL, 'rb')
+
+	fs = FAT.FileSystemParser(f)
+
+	assert FAT.IsFileSystem32(fs.bsbpb)
+	assert FAT.IsFileSystem12(fs.bsbpb)
+	assert not FAT.IsFileSystem16(fs.bsbpb)
+
+	found_1 = False
+	found_2 = False
+
+	c = 0
+	for item in fs.walk():
+		assert type(item) is FAT.FileEntry
+
+		if item.is_directory and (item.short_name.endswith('/.') or item.short_name.endswith('/..')):
+			continue
+
+		if item.short_name == '/test/1.TXT':
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert buf == b'test1\n'
+
+			found_1 = True
+
+		elif item.short_name == '/test/2.TXT':
+			buf = fs.read_chain(item.first_cluster, item.size)
+			assert buf == b'test2\n'
+
+			found_2 = True
+
+		c += 1
+
+	assert c == 4
+	assert found_1 and found_2
+	assert warn_cnt == 2
+
+	FAT.WARN_FUNC = warn_old
+
+	f.close()
+
+def test_fat16_edge():
+	def warn_to_devnull(msg):
+		assert ' misinterpret' in msg
+
+		global warn_cnt
+		warn_cnt += 1
+
+
+	warn_old = FAT.WARN_FUNC
+	FAT.WARN_FUNC = warn_to_devnull
+
+	global warn_cnt
+	warn_cnt = 0
+
+	with open(FAT16_BS_EDGE, 'rb') as f:
+		buf = f.read()
+
+	bs = FAT.BSBPB(buf)
+
+	assert warn_cnt == 1
+
+	FAT.WARN_FUNC = warn_old
