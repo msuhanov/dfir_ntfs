@@ -420,7 +420,7 @@ def ParseNTByte(Value):
 	#
 	# Additionally, some implementations use bits other than 0x08 and 0x10 for different purposes.
 	# For example, the FAT driver from netlabs (OS/2, ArcaOS) uses the first 3 bits to extend the file size field (to overcome the "4 GiB - 1 byte" limit),
-	# the remaining bits are used to store flags for extended attributes.
+	# the remaining bits are used to store flags for extended attributes. This is not supported here.
 
 	# See:
 	# * http://trac.netlabs.org/fat32/ticket/38#comment:4
