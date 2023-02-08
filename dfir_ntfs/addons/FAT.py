@@ -380,7 +380,7 @@ def DecodeFATTime(Value):
 
 	return time(hour, minute, second)
 
-NTBytePaddings = { # Remaining bits: padding size.
+NTBytePaddings = { # Remaining bits of the NT byte: padding size.
 	0x00: 0,
 	0xE4: 15,
 	0xE0: 14,
@@ -417,6 +417,14 @@ def ParseNTByte(Value):
 	# * create a directory with lowercase characters in its name, while no extension is given (this sets one bit).
 	#
 	# (Now, both bits can be misinterpreted.)
+	#
+	# Additionally, some implementations use bits other than 0x08 and 0x10 for different purposes.
+	# For example, the FAT driver from netlabs (OS/2, ArcaOS) uses the first 3 bits to extend the file size field (to overcome the "4 GiB - 1 byte" limit),
+	# the remaining bits are used to store flags for extended attributes.
+
+	# See:
+	# * http://trac.netlabs.org/fat32/ticket/38#comment:4
+	# * http://trac.netlabs.org/fat32/changeset/303/trunk/src/include/fat32def.h
 
 	lowercase_base = Value & 0x08 > 0
 	lowercase_extension = Value & 0x10 > 0
