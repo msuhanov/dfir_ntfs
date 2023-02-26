@@ -88,6 +88,9 @@ NTFS_EXTREMELY_FRAGMENTED_MFT = os.path.join(TEST_DATA_DIR, 'ntfs_extremely_frag
 NTFS_EXTREMELY_FRAGMENTED_MFT_INDX_DATA_RUNS = os.path.join(TEST_DATA_DIR, 'data_runs.pickle')
 NTFS_INDEX_GZ = os.path.join(TEST_DATA_DIR, 'ntfs_index.raw.gz')
 
+NTFS_NTFS3 = os.path.join(TEST_DATA_DIR, 'ntfs3.raw.gz')
+NTFS_NTFS3_2 = os.path.join(TEST_DATA_DIR, 'ntfs3_attrlist.raw.gz')
+
 VOLUME_START_VSS_1 = os.path.join(TEST_DATA_DIR, 'volume_start.bin')
 VOLUME_START_VSS_2 = os.path.join(TEST_DATA_DIR, 'volume_start_2.bin')
 VOLUME_START_VSS_3 = os.path.join(TEST_DATA_DIR, 'volume_start_3.bin')
@@ -158,6 +161,7 @@ FAT_DELETED_DIR = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir.raw.gz')
 FAT_DELETED_DIR_2 = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir_2.raw.gz')
 FAT32_SMALL = os.path.join(TEST_DATA_DIR, 'fat32_small.raw.gz')
 FAT16_BS_EDGE = os.path.join(TEST_DATA_DIR, 'fat16_edge.bin')
+FAT_DIR_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat_dir.raw.gz')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -2254,6 +2258,69 @@ def test_merged_index():
 		total_length += length
 
 	assert total_length * 1024 == 11262492672
+
+def test_ntfs3():
+	f = gzip.open(NTFS_NTFS3, 'rb')
+
+	mft_obj = MFT.FileSystemParser(f)
+	mft = MFT.MasterFileTableParser(mft_obj)
+
+	frs = mft.get_file_record_segment_by_number(27)
+	assert '$MFT number: 27,' in str(frs)
+
+	mft_obj.seek(27*1024)
+	frs_ = MFT.FileRecordSegment(mft_obj.read(1024))
+	assert '$MFT number: unknown,' in str(frs_)
+
+	assert frs.frs_data == frs_.frs_data
+
+	c = 0
+	for i in mft.file_records():
+		if i.is_in_use() and i.get_master_file_table_number() >= 27:
+			c += 1
+
+			assert i.base_frs.short_version
+
+	assert c == 4
+
+	f.close()
+
+def test_ntfs3_attrlist():
+	f = gzip.open(NTFS_NTFS3_2, 'rb')
+
+	mft_obj = MFT.FileSystemParser(f)
+	mft = MFT.MasterFileTableParser(mft_obj)
+
+	fr = mft.get_file_record_by_number(27)
+	assert fr.base_frs.short_version
+
+	c = 0
+	for i in fr.child_frs_list:
+		c += 1
+		assert i.short_version
+
+	assert c > 5
+
+	l = list(range(1, 101))
+	c = 0
+	for i in fr.attributes():
+		if type(i) is MFT.AttributeRecordNonresident:
+			continue
+
+		v = i.value_decoded()
+		if type(v) is Attributes.FileName:
+			c += 1
+
+			fn = v.get_file_name()
+			assert fn.endswith('.txt')
+
+			fn_i = int(fn[ : -4])
+			l.remove(fn_i)
+
+	assert c == 100
+	assert len(l) == 0
+
+	f.close()
 
 def test_start_block():
 	f = open(VOLUME_START_VSS_1, 'rb')
@@ -5072,3 +5139,31 @@ def test_fat16_edge():
 	assert warn_cnt == 1
 
 	FAT.WARN_FUNC = warn_old
+
+def test_fat_dir_orphan():
+	f = gzip.open(FAT_DIR_ORPHAN, 'rb')
+	fs = FAT.FileSystemParser(f)
+
+	c = 0
+	for i in fs.walk(scan_reallocated = True):
+		if i.short_name in [ '/_EST', '/test/.', '/test/..' ]:
+			continue
+
+		assert i.short_name.endswith('.TXT') and len(i.short_name) >= 5
+		assert i.is_deleted
+		assert not i.is_directory
+		assert i.size == 0
+
+		c += 1
+
+	assert c == 400
+
+	c = 0
+	for i in fs.walk(scan_reallocated = False):
+		c += 1
+
+	assert c == 403
+
+	assert len(fs.fat.chain(4)) > 2
+
+	f.close()

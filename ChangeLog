@@ -1,3 +1,10 @@
+Version: 1.1.16
+
+Improve handling of NTFS volumes (mounted using the ntfs3 driver).
+Improve handling of orphan (deleted while opened) FAT directories.
+
+---
+
 Version: 1.1.15
 
 Improve handling of unusual FAT volumes, again.

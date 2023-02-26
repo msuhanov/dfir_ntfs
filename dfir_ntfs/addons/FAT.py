@@ -1288,6 +1288,7 @@ class DirectoryEntries(object):
 			if ctime_fat_tenth > 199: # This is an invalid value, reset it to 0.
 				ctime_fat_tenth = 0
 
+			# This is the created timestamp or inode changed timestamp (see the note about the "ctime" field).
 			ctime_fat = DecodeFATTime(struct.unpack('<H', self.clusters_buf[pos + 14 : pos + 16])[0])
 			cdate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 16 : pos + 18])[0])
 
@@ -1299,6 +1300,11 @@ class DirectoryEntries(object):
 			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/fat_dir_entry.h#L65
 			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/fat_dir_entry.h#L47
 			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/sl_scan.cpp#L599
+			#
+			# The BitLocker To Go reader (which can be found on BitLocker discovery volumes) doesn't use this field to obtain the last access timestamp of a file.
+			# Instead, it uses the last modification timestamp as the last access timestamp.
+			# (The last modification timestamp is also used as the last modification timestamp, though.)
+			# Since this implementation is read-only, it doesn't cause any problems.
 			adate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 18 : pos + 20])[0])
 
 			# This field points to an extended attribute in FAT12/16 volumes. This is not supported.
@@ -1477,7 +1483,7 @@ class FileSystemParser(object):
 
 	def walk(self, encoding = 'ascii', scan_reallocated = False):
 		"""Walk over the file system, return tuples (FileEntry and OrphanLongEntry).
-		If the 'scan_reallocated' argument is True, also scan reallocated deleted directories.
+		If the 'scan_reallocated' argument is True, also scan (possibly) reallocated deleted directories. Orphan directories will be ignored if this argument is False.
 		"""
 
 		def bufs_match(buf_1, buf_2):
@@ -1530,7 +1536,10 @@ class FileSystemParser(object):
 
 						if (not scan_reallocated) and dir_entry.is_deleted and is_allocated:
 							# Do not deal with a deleted directory having its first cluster allocated.
+							reallocated_directories.add(dir_entry.first_cluster)
 							continue
+
+						visited_directories.add(dir_entry.first_cluster)
 
 						try:
 							new_buf = self.read_chain(dir_entry.first_cluster)
@@ -1545,9 +1554,15 @@ class FileSystemParser(object):
 							continue
 
 						if dir_entry.is_deleted and len(self.fat.chain(dir_entry.first_cluster)) == 1:
-							# Since FAT chains are lost for deleted files (directories), try to append the next cluster (if it is not allocated).
+							# Since FAT chains are lost for deleted files (directories) in general, try to append the next cluster (if it is not allocated).
 							# Also, validate that two clusters contain "matching" directory entries.
 							# No attempt is made to read more than one "extra" cluster (appending more clusters is just guessing).
+							#
+							# Some deleted files may have valid FAT chains: for example, orphan files and directories.
+							# (In Linux, these are files and directories that were deleted while opened in another program.
+							# In macOS, the same behavior can be observed for files deleted while opened.)
+							#
+							# In the last case, and when the 'scan_reallocated' argument is True, use the FAT chain available (outside of this code block).
 
 							next_cluster = dir_entry.first_cluster + 1
 							next_is_allocated = self.fat.is_allocated(next_cluster)
@@ -1565,11 +1580,15 @@ class FileSystemParser(object):
 							yield item
 
 
+		reallocated_directories = set()
+		visited_directories = set()
+
 		if self.fat_type == 32:
 			curr = self.bsbpb.get_bpb_rootclus()
 			buf = self.read_chain(curr)
 
 			stack = set([curr])
+			visited_directories.add(curr)
 		else:
 			root_offset = (self.bsbpb.get_bpb_rsvdseccnt() + self.bsbpb.get_bpb_fatsz16() * self.bsbpb.get_bpb_numfats()) * self.bsbpb.get_bpb_bytspersec()
 			root_size = self.bsbpb.get_bpb_rootentcnt() * 32
@@ -1585,8 +1604,23 @@ class FileSystemParser(object):
 
 			stack = set()
 
+
 		for item in process_buf(buf, '', set(stack)): # Pass a new instance of the set ('stack').
 			yield item
+
+		orphan_directories = reallocated_directories - visited_directories
+		if len(orphan_directories) > 0:
+			for first_cluster in orphan_directories:
+				try:
+					buf = self.read_chain(first_cluster)
+				except (FileSystemException, ValueError):
+					continue
+
+				if len(buf) == 0 or buf[33 : 35] != b'. ':
+					continue
+
+				for item in process_buf(buf, '<Orphan directory {}>'.format(first_cluster), set([])):
+					yield item
 
 	def __str__(self):
 		return 'FileSystemParser (FAT12/16/32)'

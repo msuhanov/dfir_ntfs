@@ -188,14 +188,25 @@ class FileRecordSegment(object):
 	frs_real_size = None
 	"""A real size of this file record segment (FRS)."""
 
-	def __init__(self, file_record_segment_buf, apply_update_sequence_array = True):
-		"""Create a FileRecordSegment object from bytes (the 'file_record_segment_buf' argument). Apply an update sequence array, if requested (the 'apply_update_sequence_array' argument)."""
+	short_version = None
+	"""This is a file record segment (FRS) without the $MFT number field."""
+
+	suggested_mft_number = None
+	"""A suggested $MFT number fo this file record segment (FRS)."""
+
+	def __init__(self, file_record_segment_buf, apply_update_sequence_array = True, suggested_mft_number = None):
+		"""Create a FileRecordSegment object from bytes (the 'file_record_segment_buf' argument). Apply an update sequence array, if requested (the 'apply_update_sequence_array' argument).
+		The 'suggested_mft_number' argument can be used to define the $MFT number for this file record segment (FRS).
+		"""
 
 		if len(file_record_segment_buf) not in FILE_RECORD_SEGMENT_SIZES_SUPPORTED:
 			raise FileRecordSegmentException('Invalid (unsupported) size of the file record segment: {}'.format(len(file_record_segment_buf)))
 
 		self.frs_data = bytearray(file_record_segment_buf)
 		self.usa_offset, self.usa_size = self.parse_and_validate_multi_sector_header(apply_update_sequence_array)
+
+		self.short_version = self.usa_offset < 48 # Currently, only the ntfs3 driver (Linux) creates a short header.
+		self.suggested_mft_number = suggested_mft_number
 
 		if apply_update_sequence_array:
 			usa_elements_applied = self.apply_update_sequence_array()
@@ -340,8 +351,11 @@ class FileRecordSegment(object):
 	def get_master_file_table_number(self):
 		"""Get an $MFT number for this file record segment (FRS) and return it."""
 
+		if self.short_version: # Return the number suggested when creating this object.
+			return self.suggested_mft_number
+
 		# This is a 48-bit integer (other sources incorrectly state that this is a 32-bit integer), but the higher part (16 bits) is stored in the lower bytes.
-		# At least one third-party NTFS implementation (a partition manager) does not store a valid value in this field.
+		# At least two third-party NTFS implementations (a partition manager and a new Linux driver) do not store a valid value in this field.
 
 		mft_number_hi, mft_number_lo = struct.unpack('<HL', self.frs_data[42 : 48])
 		return (mft_number_hi << 32) | mft_number_lo
@@ -460,7 +474,13 @@ class FileRecordSegment(object):
 		else:
 			is_base_frs_str = 'child'
 
-		return 'FileRecordSegment, {}, $MFT number: {}, {}, {}'.format(status_str, self.get_master_file_table_number(), is_in_use_str, is_base_frs_str)
+		mft_num = self.get_master_file_table_number()
+		if mft_num is None:
+			mft_num_str = 'unknown'
+		else:
+			mft_num_str = str(mft_num)
+
+		return 'FileRecordSegment, {}, $MFT number: {}, {}, {}'.format(status_str, mft_num_str, is_in_use_str, is_base_frs_str)
 
 class AttributeRecordResident(object):
 	"""This class is used to work with a resident attribute record."""
@@ -975,7 +995,7 @@ class MasterFileTableParser(object):
 		self.file_object.seek(file_record_segment_offset)
 		buf = self.file_object.read(self.file_record_segment_size)
 
-		return FileRecordSegment(buf)
+		return FileRecordSegment(buf, suggested_mft_number = file_record_segment_number)
 
 	def get_file_record_by_number(self, base_file_record_segment_number, expected_sequence_number = None, allow_child_file_record_segment_number = True):
 		"""Get and return a file record (FileRecord) by its base file record segment (FRS) number.
@@ -990,7 +1010,7 @@ class MasterFileTableParser(object):
 		self.file_object.seek(base_file_record_segment_offset)
 		buf = self.file_object.read(self.file_record_segment_size)
 
-		frs = FileRecordSegment(buf)
+		frs = FileRecordSegment(buf, suggested_mft_number = base_file_record_segment_number)
 		if frs.is_base_file_record_segment():
 			mft_number = frs.get_master_file_table_number()
 			sequence_number = frs.get_sequence_number()
@@ -1031,7 +1051,7 @@ class MasterFileTableParser(object):
 				if expected_sequence_number is not None and sequence_number != expected_sequence_number:
 					raise MasterFileTableException('A sequence number is not equal to an expected sequence number: {} != {}'.format(sequence_number, expected_sequence_number))
 
-				# A number of a child file record segment (FRS) was given instead of a base one.
+				# A number for a child file record segment (FRS) was given instead of a base one.
 				child_file_record_segment_number = base_file_record_segment_number
 
 				for parent_reference in self.child_cache.keys():
@@ -1266,7 +1286,7 @@ class MasterFileTableParser(object):
 				break
 
 			try:
-				frs = FileRecordSegment(buf)
+				frs = FileRecordSegment(buf, suggested_mft_number = pos // self.file_record_segment_size)
 			except FileRecordSegmentException:
 				# An invalid file record segment, ignore it and continue.
 				pos += self.file_record_segment_size
@@ -1301,7 +1321,7 @@ class MasterFileTableParser(object):
 				break
 
 			try:
-				frs = FileRecordSegment(buf)
+				frs = FileRecordSegment(buf, suggested_mft_number = pos // self.file_record_segment_size)
 			except FileRecordSegmentException:
 				# An invalid file record segment, ignore it and continue.
 				pos += self.file_record_segment_size
@@ -1491,7 +1511,7 @@ class FileSystemParser(FragmentedFile):
 
 		self.volume_object.seek(self.volume_offset + first_frs_offset)
 		first_frs_buf = self.volume_object.read(frs_size)
-		first_frs = FileRecordSegment(first_frs_buf)
+		first_frs = FileRecordSegment(first_frs_buf, suggested_mft_number = 0)
 
 		# Check if an attribute list is present.
 		attr_list = None
