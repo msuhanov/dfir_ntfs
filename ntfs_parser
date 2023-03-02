@@ -647,6 +647,29 @@ def process_log():
 
 				output_lines.append('')
 
+		if redo_op == LogFile.UpdateFileNameRoot or redo_op == LogFile.UpdateFileNameAllocation or undo_op == LogFile.UpdateFileNameRoot or undo_op == LogFile.UpdateFileNameAllocation:
+			if redo_op == LogFile.UpdateFileNameRoot or redo_op == LogFile.UpdateFileNameAllocation:
+				if len(redo_data) == 56:
+					attr_di = Attributes.DuplicatedInformation(redo_data)
+
+					output_lines.append('Update to duplicated information (redo data):')
+					output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_di.get_mtime())))
+					output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_di.get_atime())))
+					output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_di.get_ctime())))
+					output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_di.get_etime())))
+					output_lines.append('')
+
+			if undo_op == LogFile.UpdateFileNameRoot or undo_op == LogFile.UpdateFileNameAllocation:
+				if len(undo_data) == 56:
+					attr_di = Attributes.DuplicatedInformation(undo_data)
+
+					output_lines.append('Update to duplicated information (undo data):')
+					output_lines.append(' * M timestamp: {}'.format(format_timestamp(attr_di.get_mtime())))
+					output_lines.append(' * A timestamp: {}'.format(format_timestamp(attr_di.get_atime())))
+					output_lines.append(' * C timestamp: {}'.format(format_timestamp(attr_di.get_ctime())))
+					output_lines.append(' * E timestamp: {}'.format(format_timestamp(attr_di.get_etime())))
+					output_lines.append('')
+
 		if target_attribute_name == '$J':
 			usn_data_1 = None
 			usn_data_2 = None

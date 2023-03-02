@@ -177,6 +177,7 @@ EXFAT_FULL_TEST_3 = os.path.join(TEST_DATA_DIR, 'win_exfat_7.raw.gz')
 EXFAT_ENCRYPTED = os.path.join(TEST_DATA_DIR, 'exfat_encrypted.raw.gz')
 EXFAT_VENDOR_EXTENSIONS = os.path.join(TEST_DATA_DIR, 'exfat_dir_sony.bin') # Source: <https://github.com/relan/exfat/issues/48>.
 EXFAT_UNUSUAL_LABEL_DIR = os.path.join(TEST_DATA_DIR, 'exfat_label_dotdot.bin')
+EXFAT_DIR_ORPHAN = os.path.join(TEST_DATA_DIR, 'exfat_orphan.raw.gz')
 
 def test_lxattrb():
 	with open(LXATTRB_WSL_1, 'rb') as f:
@@ -5165,5 +5166,36 @@ def test_fat_dir_orphan():
 	assert c == 403
 
 	assert len(fs.fat.chain(4)) > 2
+
+	f.close()
+
+def test_exfat_dir_orphan():
+	f = gzip.open(EXFAT_DIR_ORPHAN, 'rb')
+	fs = exFAT.FileSystemParser(f)
+
+	c = 0
+	for i in fs.walk(scan_reallocated = True):
+		if i.name == '/test':
+			assert i.first_cluster == 6
+			continue
+
+		assert i.name.endswith('.txt')
+		assert i.is_deleted
+		assert not i.is_directory
+		assert i.size == 0
+
+		c += 1
+
+	assert c == 400
+
+	c = 0
+	for i in fs.walk(scan_reallocated = False):
+		if i.name != '/test':
+			assert i.name.startswith('<Orphan directory 6>/')
+			assert i.name.endswith('.txt')
+
+		c += 1
+
+	assert c == 401
 
 	f.close()

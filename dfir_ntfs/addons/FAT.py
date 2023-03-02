@@ -1616,7 +1616,7 @@ class FileSystemParser(object):
 				except (FileSystemException, ValueError):
 					continue
 
-				if len(buf) == 0 or buf[33 : 35] != b'. ':
+				if len(buf) < 512 or buf[32 : 35] != b'.. ' or buf[0 : 2] != b'. ':
 					continue
 
 				for item in process_buf(buf, '<Orphan directory {}>'.format(first_cluster), set([])):

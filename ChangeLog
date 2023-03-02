@@ -1,3 +1,11 @@
+Version: 1.1.17
+
+Improve handling of orphan (deleted while opened) exFAT directories.
+Print information from duplicated information entries found in the $LogFile journal.
+Minor changes.
+
+---
+
 Version: 1.1.16
 
 Improve handling of NTFS volumes (mounted using the ntfs3 driver).

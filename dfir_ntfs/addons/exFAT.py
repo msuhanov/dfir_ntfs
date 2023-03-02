@@ -1237,7 +1237,22 @@ class FileSystemParser(object):
 					if dir_entry.is_directory: # Walk over subdirectories.
 						if (not scan_reallocated) and dir_entry.is_deleted and is_allocated:
 							# Do not deal with a deleted directory having its first cluster allocated.
+							reallocated_directories.add(dir_entry.first_cluster)
+
+							# In Linux, orphan (deleted while opened in another program) files or directories may have allocated clusters attached.
+							# To work with an orphan directory, we need to know its size and the value of the "no FAT chain" field.
+							# Grab this metadata from the most recent reallocated directory entry. We use "mtime" to compare directory entries (and we ignore "mtz").
+
+							if dir_entry.first_cluster not in reallocated_directories_metadata.keys():
+								reallocated_directories_metadata[dir_entry.first_cluster] = (dir_entry.mtime, dir_entry.size, dir_entry.no_fat_chain)
+							else:
+								ts = reallocated_directories_metadata[dir_entry.first_cluster][0]
+								if dir_entry.mtime > ts:
+									reallocated_directories_metadata[dir_entry.first_cluster] = (dir_entry.mtime, dir_entry.size, dir_entry.no_fat_chain)
+
 							continue
+
+						visited_directories.add(dir_entry.first_cluster)
 
 						try:
 							new_buf = self.read_chain(dir_entry.first_cluster, dir_entry.size, dir_entry.no_fat_chain)
@@ -1254,6 +1269,10 @@ class FileSystemParser(object):
 					yield ExpandPath(parent_path, dir_entry)
 
 
+		reallocated_directories = set()
+		reallocated_directories_metadata = dict()
+		visited_directories = set()
+
 		first = self.br.get_firstclusterofrootdirectory()
 		buf = self.read_chain(first)
 
@@ -1261,6 +1280,22 @@ class FileSystemParser(object):
 
 		for item in process_buf(buf, '', set(stack)): # Pass a new instance of the set ('stack').
 			yield item
+
+		orphan_directories = reallocated_directories - visited_directories
+		if len(orphan_directories) > 0:
+			for first_cluster in orphan_directories:
+				__, dir_size, dir_no_fat_chain = reallocated_directories_metadata[first_cluster]
+
+				try:
+					buf = self.read_chain(first_cluster, dir_size, dir_no_fat_chain)
+				except (FileSystemException, ValueError):
+					continue
+
+				if len(buf) < 512 or buf[0] != DE_FILE or buf[32] != DE_STREAM_EXTENSION or buf[64] != DE_FILE_NAME:
+					continue
+
+				for item in process_buf(buf, '<Orphan directory {}>'.format(first_cluster), set([])):
+					yield item
 
 	def __str__(self):
 		return 'FileSystemParser (exFAT)'
