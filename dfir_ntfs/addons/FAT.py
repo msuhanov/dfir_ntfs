@@ -1483,7 +1483,7 @@ class FileSystemParser(object):
 
 	def walk(self, encoding = 'ascii', scan_reallocated = False):
 		"""Walk over the file system, return tuples (FileEntry and OrphanLongEntry).
-		If the 'scan_reallocated' argument is True, also scan (possibly) reallocated deleted directories. Orphan directories will be ignored if this argument is False.
+		If the 'scan_reallocated' argument is True, also scan (possibly) reallocated deleted directories.
 		"""
 
 		def bufs_match(buf_1, buf_2):
