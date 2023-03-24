@@ -1,3 +1,10 @@
+Version: 1.1.18
+
+Improve handling of unusual FAT volumes.
+Minor changes.
+
+---
+
 Version: 1.1.17
 
 Improve handling of orphan (deleted while opened) exFAT directories.

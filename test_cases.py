@@ -162,6 +162,7 @@ FAT_DELETED_DIR_2 = os.path.join(TEST_DATA_DIR, 'fat_deleted_dir_2.raw.gz')
 FAT32_SMALL = os.path.join(TEST_DATA_DIR, 'fat32_small.raw.gz')
 FAT16_BS_EDGE = os.path.join(TEST_DATA_DIR, 'fat16_edge.bin')
 FAT_DIR_ORPHAN = os.path.join(TEST_DATA_DIR, 'fat_dir.raw.gz')
+FAT_64COUNT = os.path.join(TEST_DATA_DIR, 'fat64.raw.gz')
 
 EXFAT_BR = os.path.join(TEST_DATA_DIR, 'exfat_br.bin')
 EXFAT_FAT = os.path.join(TEST_DATA_DIR, 'exfat_fat.bin')
@@ -5199,3 +5200,36 @@ def test_exfat_dir_orphan():
 	assert c == 401
 
 	f.close()
+
+def test_fat_64bit_sector_count():
+	def warn_to_devnull(msg):
+		assert ' 64-bit ' in msg
+
+		global warn_cnt
+		warn_cnt += 1
+
+
+	warn_old = FAT.WARN_FUNC
+	FAT.WARN_FUNC = warn_to_devnull
+
+	global warn_cnt
+	warn_cnt = 0
+
+	f = gzip.open(FAT_64COUNT, 'rb')
+	fs = FAT.FileSystemParser(f, 2048*512)
+
+	assert fs.bsbpb.total_sectors == 129024
+
+	file_paths = [ '/test', '/test/.', '/test/..', '/test/test.test' ]
+
+	for i in fs.walk():
+		p = file_paths.pop(0)
+		assert i.long_name == p or i.short_name == p
+
+	assert len(file_paths) == 0
+
+	f.close()
+
+	assert warn_cnt == 1
+
+	FAT.WARN_FUNC = warn_old

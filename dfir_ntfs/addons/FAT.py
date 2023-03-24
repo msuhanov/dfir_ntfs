@@ -79,6 +79,7 @@ FILE_ATTR_LIST = { # ATTR_LONG_NAME is not listed on purpose.
 # This is obviously wrong for the dot and dot-dot entries.
 FORBIDDEN_CHARACTERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34, 42, 43, 44, 46, 47, 58, 59, 60, 61, 62, 63, 91, 92, 93, 124]
 
+# A relaxed version for volume labels.
 FORBIDDEN_CHARACTERS_LABEL = [0, 10, 13]
 
 # A list of ASCII lowercase characters.
@@ -126,6 +127,8 @@ def GetCountOfClusters(BSBPB):
 	totsec = BSBPB.get_bpb_totsec16()
 	if totsec == 0:
 		totsec = BSBPB.get_bpb_totsec32()
+		if totsec == 0:
+			totsec = BSBPB.get_bs_totsec64()
 
 	if BSBPB.get_bpb_fatsz16() > 0:
 		RootDirSectors = (BSBPB.get_bpb_rootentcnt() * 32 + BSBPB.get_bpb_bytspersec() - 1) // BSBPB.get_bpb_bytspersec()
@@ -162,7 +165,7 @@ def IsFileSystem16(BSBPB, Silent = False):
 	"""Check if a given BSBPB object belongs to the FAT16 file system."""
 
 	CountOfClusters = GetCountOfClusters(BSBPB)
-	IsFileSystemUnusual12Or16(CountOfClusters, Silent)
+	IsFileSystemUnusual12Or16(CountOfClusters, Silent, 16)
 
 	return CountOfClusters < 65525 and CountOfClusters >= 4085
 
@@ -170,11 +173,11 @@ def IsFileSystem12(BSBPB, Silent = False):
 	"""Check if a given BSBPB object belongs to the FAT12 file system."""
 
 	CountOfClusters = GetCountOfClusters(BSBPB)
-	IsFileSystemUnusual12Or16(CountOfClusters, Silent)
+	IsFileSystemUnusual12Or16(CountOfClusters, Silent, 12)
 
 	return CountOfClusters < 4085 and CountOfClusters > 0
 
-def IsFileSystemUnusual12Or16(CountOfClusters, Silent = False):
+def IsFileSystemUnusual12Or16(CountOfClusters, Silent = False, FSTypeBeingTested = None):
 	"""Check if the count of clusters defines an edge case between FAT12 and FAT16."""
 
 	# According to [FATGEN 1.03], the threshold between FAT12 and FAT16 file systems is 4085 clusters (FAT12: < 4085, FAT16: >= 4085).
@@ -205,7 +208,10 @@ def IsFileSystemUnusual12Or16(CountOfClusters, Silent = False):
 
 	if CountOfClusters >= 4079 and CountOfClusters <= 4086:
 		if not Silent:
-			WARN_FUNC('The number of clusters is likely to cause the file system to be misinterpreted as either FAT12 or FAT16')
+			if FSTypeBeingTested is None:
+				WARN_FUNC('The number of clusters is likely to cause the file system to be misinterpreted as either FAT12 or FAT16')
+			else:
+				WARN_FUNC('The number of clusters is likely to cause the file system to be misinterpreted as either FAT12 or FAT16 (while testing for FAT{})'.format(FSTypeBeingTested))
 
 		return True
 
@@ -320,7 +326,33 @@ def BuildLongName(LongEntities):
 		return
 
 	if len(long_name) > 255: # If this name is too long, truncate it.
+		# Some drivers allow more than 255 characters (260 or even 819).
+		# This is not supported here. According to [FATGEN 1.03], the limit is 255 characters.
+		#
+		# Also, the document does not clarify how to deal with a character consisting of two 16-bit values.
+		# It is implied that "raw" 16-bit values are counted, not the decoded characters: "UNICODE characters are 16-bit characters" (so the limit is 510 bytes).
+		# Here, we count the characters, not the 16-bit values (just in case). A warning is issued in the name is too long.
+		#
+		# See:
+		# * https://www.virtualbox.org/browser/vbox/trunk/include/iprt/formats/fat.h?rev=98103#L729
+		# * https://github.com/qemu/qemu/blob/c283ff89d11ff123efc9af49128ef58511f73012/block/vvfat.c#L1655
+
+		WARN_FUNC('An invalid long name (> 255 characters) encountered, truncating, the original name is: {}'.format(long_name))
+
 		return long_name[ : 255]
+
+	if long_name.startswith(' ') or long_name.endswith(' '):
+		# According to [FATGEN 1.03], leading and trailing spaces are ignored.
+		# Both Linux and Windows drivers can create and display long names with the first character being a space.
+		# So, issue a warning, but keep the long name intact.
+
+		WARN_FUNC('A long name contains a leading (or trailing) space: {}'.format(long_name))
+
+	if long_name.endswith('.'):
+		# According to [FATGEN 1.03], trailing periods are ignored.
+		# Issue a warning here and keep the long name intact (just in case).
+
+		WARN_FUNC('A long name contains a trailing period (dot): {}'.format(long_name))
 
 	return long_name
 
@@ -478,6 +510,8 @@ class BSBPB(object):
 	bs_buf = None
 	is_fat32 = None
 
+	total_sectors = None # A cached count of sectors.
+
 	def __init__(self, bs_buf, relaxed_checks = False):
 		self.bs_buf = bs_buf
 
@@ -576,7 +610,11 @@ class BSBPB(object):
 	def get_bpb_totsec16(self):
 		"""Get and return the 16-bit number of sectors on the volume."""
 
-		return struct.unpack('<H', self.bs_buf[19 : 21])[0]
+		totsec = struct.unpack('<H', self.bs_buf[19 : 21])[0]
+		if totsec > 0:
+			self.total_sectors = totsec
+
+		return totsec
 
 	def get_bpb_media(self):
 		"""Get and return the media type (as an integer)."""
@@ -614,11 +652,11 @@ class BSBPB(object):
 	def get_bpb_totsec32(self):
 		"""Get and return the 32-bit number of sectors on the volume."""
 
-		tot = struct.unpack('<L', self.bs_buf[32 : 36])[0]
-		if tot == 0 and self.is_fat32:
-			raise BootSectorException('Invalid number of total sectors')
+		totsec = struct.unpack('<L', self.bs_buf[32 : 36])[0]
+		if totsec > 0:
+			self.total_sectors = totsec
 
-		return tot
+		return totsec
 
 	def get_signature(self):
 		"""Get and return the boot signature (as two raw bytes)."""
@@ -750,19 +788,42 @@ class BSBPB(object):
 		If the extended fields are not present, return (None, None, None).
 		"""
 
-		if self.get_bs_bootsig() != 0x29:
-			return (None, None, None)
+		if self.get_bs_bootsig() == 0x29:
+			if self.is_fat32:
+				volume_id = struct.unpack('<L', self.bs_buf[67 : 71])[0]
+				volume_label = self.bs_buf[71 : 82]
+				fs_type = self.bs_buf[82 : 90]
+			else:
+				volume_id = struct.unpack('<L', self.bs_buf[39 : 43])[0]
+				volume_label = self.bs_buf[43 : 54]
+				fs_type = self.bs_buf[54 : 62]
 
-		if self.is_fat32:
-			volume_id = struct.unpack('<L', self.bs_buf[67 : 71])[0]
-			volume_label = self.bs_buf[71 : 82]
-			fs_type = self.bs_buf[82 : 90]
-		else:
-			volume_id = struct.unpack('<L', self.bs_buf[39 : 43])[0]
-			volume_label = self.bs_buf[43 : 54]
-			fs_type = self.bs_buf[54 : 62]
+			return (volume_id, volume_label, fs_type)
 
-		return (volume_id, volume_label, fs_type)
+		if self.get_bs_bootsig() == 0x28: # An alternative version of extended fields, only the 'volume_id' field is present.
+			if self.is_fat32:
+				volume_id = struct.unpack('<L', self.bs_buf[67 : 71])[0]
+			else:
+				volume_id = struct.unpack('<L', self.bs_buf[39 : 43])[0]
+
+			return (volume_id, None, None)
+
+		return (None, None, None)
+
+	def get_bs_totsec64(self):
+		"""Get and return the 64-bit number of sectors on the volume (or None, if not set).
+		This is a non-standard way of storing the total sector count.
+		"""
+
+		if self.is_fat32 and self.get_bs_bootsig() == 0x29 and self.get_bpb_totsec16() == 0 and self.get_bpb_totsec32() == 0:
+			if self.total_sectors is None:
+				WARN_FUNC('Trying the 64-bit count of sectors, this is unusual')
+
+			totsec = struct.unpack('<Q', self.bs_buf[82 : 90])[0]
+			if totsec > 0:
+				self.total_sectors = totsec
+
+			return totsec
 
 	def fat_offset_and_size(self):
 		"""Calculate and return the offset and size of the active FAT (plus, the last valid data cluster).
@@ -1301,10 +1362,10 @@ class DirectoryEntries(object):
 			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/fat_dir_entry.h#L47
 			# * https://github.com/SymbianSource/oss.FCL.sf.os.kernelhwsrv/blob/0c3208650587ac0230aed8a74e9bddb5288023eb/userlibandfileserver/fileserver/sfat/sl_scan.cpp#L599
 			#
-			# The BitLocker To Go reader (which can be found on BitLocker discovery volumes) doesn't use this field to obtain the last access timestamp of a file.
+			# The BitLocker To Go reader (which can be found on BitLocker discovery volumes) does not use this field to obtain the last access timestamp of a file.
 			# Instead, it uses the last modification timestamp as the last access timestamp.
 			# (The last modification timestamp is also used as the last modification timestamp, though.)
-			# Since this implementation is read-only, it doesn't cause any problems.
+			# Since this implementation is read-only, it does not cause any problems.
 			adate_fat = DecodeFATDate(struct.unpack('<H', self.clusters_buf[pos + 18 : pos + 20])[0])
 
 			# This field points to an extended attribute in FAT12/16 volumes. This is not supported.
