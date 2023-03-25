@@ -331,7 +331,7 @@ def BuildLongName(LongEntities):
 		#
 		# Also, the document does not clarify how to deal with a character consisting of two 16-bit values.
 		# It is implied that "raw" 16-bit values are counted, not the decoded characters: "UNICODE characters are 16-bit characters" (so the limit is 510 bytes).
-		# Here, we count the characters, not the 16-bit values (just in case). A warning is issued in the name is too long.
+		# Here, we count the characters, not the 16-bit values (just in case). A warning is issued if the name is too long.
 		#
 		# See:
 		# * https://www.virtualbox.org/browser/vbox/trunk/include/iprt/formats/fat.h?rev=98103#L729
