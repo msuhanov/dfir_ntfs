@@ -326,7 +326,7 @@ def BuildLongName(LongEntities):
 		return
 
 	if len(long_name) > 255: # If this name is too long, truncate it.
-		# Some drivers allow more than 255 characters (260 or even 819).
+		# Some drivers allow more than 255 characters (260, or even 819, or a different number).
 		# This is not supported here. According to [FATGEN 1.03], the limit is 255 characters.
 		#
 		# Also, the document does not clarify how to deal with a character consisting of two 16-bit values.
@@ -336,6 +336,7 @@ def BuildLongName(LongEntities):
 		# See:
 		# * https://www.virtualbox.org/browser/vbox/trunk/include/iprt/formats/fat.h?rev=98103#L729
 		# * https://github.com/qemu/qemu/blob/c283ff89d11ff123efc9af49128ef58511f73012/block/vvfat.c#L1655
+		# * https://github.com/rhboot/grub2/blob/7de33f4072abf5f14c4fdad6e566c58bdbf3b26e/grub-core/fs/fat.c#L617
 
 		WARN_FUNC('An invalid long name (> 255 characters) encountered, truncating, the original name is: {}'.format(long_name))
 
@@ -1272,6 +1273,9 @@ class DirectoryEntries(object):
 				short_name = ParseShortName(short_name_raw, encoding, lowercase_base, lowercase_extension)
 			else:
 				# A volume label has almost no restrictions.
+				#
+				# At least one implementation (the GRUB boot manager) allows long volume labels, which are built using long file name entries.
+				# This is not supported here. Also, this violates the limit defined in [FATGEN 1.03].
 
 				if short_name_raw[0] == 0x00 or short_name_raw[0] == 0xE5:
 					short_name_raw = b'_' + short_name_raw[1 : ]
