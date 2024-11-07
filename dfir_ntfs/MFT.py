@@ -649,9 +649,16 @@ class SlackSpace(object):
 							ts_valid = False
 							break
 
-					if ts_valid and pos >= 8:
-						attr_pos = pos - 8
-						attr_buf = value[attr_pos : ]
+					if ts_valid and (pos >= 8 or pos == 4 or pos == 0):
+						if pos >= 8: # A full $FILE_NAME attribute is available (no bytes were overwritten).
+							attr_pos = pos - 8
+							attr_buf = value[attr_pos : ]
+						elif pos == 4: # A partial $FILE_NAME attribute is available (the first 4 or 8 bytes were allocated and overwritten).
+							attr_pos = pos - 4
+							attr_buf = b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF' + value[attr_pos + 4 : ] # Try to reconstruct the partial attribute.
+						elif pos == 0: # A partial $FILE_NAME attribute is available (the first 8 bytes were allocated and overwritten).
+							attr_pos = pos
+							attr_buf = b'\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF' + value[attr_pos : ] # Try to reconstruct the partial attribute.
 
 						try:
 							file_name = Attributes.FileName(attr_buf)
