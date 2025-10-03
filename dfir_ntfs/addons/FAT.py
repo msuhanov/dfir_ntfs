@@ -900,6 +900,9 @@ class FSINFO(object):
 	def __str__(self):
 		return 'FSINFO'
 
+# On ESXi, the second sector is used to store the volume UUID.
+# This is not supported here.
+
 class FAT(object):
 	"""This class is used to work with a file allocation table (12/16/32-bit)."""
 
@@ -1093,6 +1096,7 @@ class FAT(object):
 # In Windows and macOS, it is "created time".
 # In Linux, it is "inode changed time" (before Linux 5.19) or "created time" (Linux 5.19 and later).
 # QEMU VVFAT maps "inode changed time" into this field too.
+# On ESXi, it is "created time", but incorrectly listed as "inode changed time" (the name is wrong, not the meaning).
 FileEntry = namedtuple('FileEntry', [ 'is_deleted', 'is_directory', 'short_name', 'short_name_raw', 'long_name', 'atime', 'mtime', 'ctime', 'size', 'attributes', 'ntbyte', 'first_cluster', 'is_encrypted' ])
 
 OrphanLongEntry = namedtuple('OrphanLongEntry', [ 'long_name_partial' ])
