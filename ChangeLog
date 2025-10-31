@@ -1,3 +1,9 @@
+Version: 1.1.20
+
+Improve handling of unusual FAT volumes.
+
+---
+
 Version: 1.1.19
 
 Improve handling of partial $FILE_NAME attributes in file record slack.
